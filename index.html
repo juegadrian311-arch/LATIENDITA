@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mi Tienda Premium & Recompensas</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <header class="header-wallet">
+        <div class="logo" onclick="location.reload()" style="cursor:pointer;">E-Store Épica</div>
+        <div class="header-controls" style="display: flex; gap: 15px; align-items: center;">
+            <button onclick="openAdminPanel()" style="background:transparent; border:none; font-size:1.2rem; cursor:pointer;">🔑</button>
+            <div class="wallet-container">
+                <span>Mi Cartera:</span>
+                <span id="wallet-balance">$0.00</span>
+            </div>
+        </div>
+    </header>
+
+    <main class="main-container">
+        
+        <div class="search-filter-container" style="background: #ffffff; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); display: flex; flex-wrap: wrap; gap: 15px; justify-content: space-between; align-items: center; margin-bottom: 25px;">
+            <div style="flex: 1; min-width: 280px;">
+                <input type="text" id="store-search-input" oninput="filterStoreProducts()" placeholder="🔍 Buscar productos por nombre o descripción..." style="width: 100%; padding: 12px 15px; border-radius: 8px; border: 2px solid #f1f2f6; background: #f9fafb; color: #2f3542; font-size: 1rem; outline: none;">
+            </div>
+            <div>
+                <select id="filter-price-order" onchange="filterStoreProducts()" style="padding: 12px 15px; border-radius: 8px; background: #2f3542; color: white; border: none; cursor: pointer; font-weight: bold; font-size: 0.95rem;">
+                    <option value="default">↕️ Ordenar por Defecto</option>
+                    <option value="low-high">Precios Bajos Primero 📉</option>
+                    <option value="high-low">Precios Altos Primero 📈</option>
+                </select>
+            </div>
+        </div>
+        
+        <section class="premium-section" style="margin-bottom: 40px;">
+    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 15px;">
+        <h2 style="color: #1e1e2f; margin: 0;">⚡ Colección Premium</h2>
+        <span style="background: #ffa502; color: white; font-size: 0.8rem; padding: 4px 8px; border-radius: 20px; font-weight: bold;">📦 Envío Express + Pago Contra Entrega</span>
+    </div>
+    <p style="color: #57606f; margin-top: -10px; margin-bottom: 20px; font-size: 0.9rem;">Recibe tus artículos en tiempo récord (1-3 días hábiles) y paga en efectivo directamente al repartidor cuando toque a tu puerta.</p>
+    <div id="premium-grid" class="products-grid"></div>
+</section>
+
+<section class="budget-section" style="margin-bottom: 40px;">
+    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 15px;">
+        <h2 style="color: #1e1e2f; margin: 0;">🌍 Artículos Virales de Importación</h2>
+        <span style="background: #1e90ff; color: white; font-size: 0.8rem; padding: 4px 8px; border-radius: 20px; font-weight: bold;">💰 Descuento Masivo + Pago Anticipado</span>
+    </div>
+    <p style="color: #57606f; margin-top: -10px; margin-bottom: 20px; font-size: 0.9rem;">Traídos directamente de fábrica internacional. Tardan entre 15 y 25 días en llegar, pero te garantizan el precio más bajo del mercado. Requiere pago seguro anticipado.</p>
+    <div id="budget-grid" class="products-grid"></div>
+</section>
+
+        <section class="gacha-section">
+            <div class="gacha-container">
+                <div class="gacha-box info-box">
+                    <h3>Centro de Boletos de la Suerte</h3>
+                    <p>Mira un anuncio publicitario simulado para obtener boletos gratis e invertirlos en la ruleta de Cashback financiero.</p>
+                    <div class="tickets-display">Mis Boletos: <span id="tickets-count">0</span></div>
+                    <button class="btn-ad" id="btn-ad">📺 Ver Anuncio Patrocinado</button>
+                </div>
+
+                <div class="gacha-box wheel-box">
+                    <h3>🎰 Ruleta de la Fortuna (Cashback Pro)</h3>
+                    <div class="wheel-wrapper">
+                        <div class="wheel-pointer">▼</div>
+                        <div class="wheel" id="wheel">
+                            <div class="segment" style="--i:0; background:#ff4757;"><span>$15</span></div>
+                            <div class="segment" style="--i:1; background:#ffa502;"><span>$10</span></div>
+                            <div class="segment" style="--i:2; background:#2ed573;"><span>$5</span></div>
+                            <div class="segment" style="--i:3; background:#1e90ff;"><span>$3</span></div>
+                            <div class="segment" style="--i:4; background:#747d8c;"><span>❌</span></div>
+                        </div>
+                    </div>
+                    <button class="btn-spin" id="btn-spin">💥 ¡GIRAR POR 1 BOLETO! 💥</button>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <div class="product-modal-overlay" id="product-detail-modal" style="display: none;">
+        <div class="product-modal-content">
+            <span class="close-modal-btn" onclick="closeProductDetail()">&times;</span>
+            <div class="product-modal-grid">
+                <div class="product-gallery">
+                    <div class="main-image-viewport" id="carousel-main-view"></div>
+                    <div class="gallery-carousel-controls">
+                        <button onclick="changeCarouselImage(-1)">◀</button>
+                        <span id="carousel-index">1 / 1</span>
+                        <button onclick="changeCarouselImage(1)">▶</button>
+                    </div>
+                </div>
+                <div class="product-info-panel">
+                    <h2 id="detail-title">Cargando producto...</h2>
+                    <div class="detail-price" id="detail-price">$0.00</div>
+                    <div id="detail-rating" style="color: #ffa502; margin-bottom: 10px;">⭐⭐⭐⭐⭐</div>
+                    <p class="detail-description" id="detail-desc">Descripción...</p>
+                    <div class="detail-reward-badge" id="detail-reward">🎁 Regala: 0 Boletos Gacha</div>
+                    <button class="btn-checkout" id="detail-add-btn" style="margin-top: 20px;">Agregar al Carrito 🛒</button>
+                </div>
+            </div>
+            <div class="similar-products-section">
+                <h3>🔄 Productos Similares Recomendados</h3>
+                <div class="products-grid" id="similar-grid" style="grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 15px; margin-top: 15px;"></div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="cart-modal-overlay" id="cart-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center;">
+    <div class="cart-modal-content" style="background: white; padding: 25px; border-radius: 12px; width: 90%; max-width: 480px; max-height: 85vh; overflow-y: auto; box-shadow: 0 10px 25px rgba(0,0,0,0.15);">
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #f1f2f6; padding-bottom: 10px; margin-bottom: 15px;">
+            <h3 style="margin: 0; color: #2f3542;">Tu Carrito de Compras 🛒</h3>
+            <span style="font-size: 1.5rem; cursor: pointer; color: #a4b0be;" onclick="toggleCartModal()">&times;</span>
+        </div>
+
+        <div id="cart-items-container" style="margin-bottom: 20px;"></div>
+
+        <div id="shipping-form-container" style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #e4e7eb;">
+            <h4 style="margin-top: 0; margin-bottom: 10px; color: #1e1e2f;">📍 Datos para Entrega Express / Validación</h4>
+            <div style="display: flex; flex-direction: column; gap: 10px;">
+                <input type="text" id="ship-name" placeholder="Nombre completo de quien recibe" style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px;">
+                <input type="tel" id="ship-phone" placeholder="Teléfono de contacto (WhatsApp)" style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px;">
+                <input type="text" id="ship-address" placeholder="Dirección (Calle, Número, Colonia)" style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px;">
+                <input type="text" id="ship-city" placeholder="Ciudad / Estado" style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px;">
+            </div>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; font-size: 1.1rem; font-weight: bold;">
+            <span>Total del pedido:</span>
+            <span id="cart-total-price" style="color: #2ed573; font-size: 1.3rem;">$0.00</span>
+        </div>
+
+        <button onclick="checkoutCart()" style="background: linear-gradient(135deg, #ff4757, #ff6b81); color: white; border: none; padding: 14px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 1rem; width: 100%;">Confirmar Orden de Compra 🚀</button>
+    </div>
+</div>
+
+    <div class="cart-floating-btn" onclick="toggleCartModal()">
+        🛒 <span class="cart-floating-badge" id="cart-badge">0</span>
+    </div>
+
+    <!-- MODAL DE PASARELA DE PAGO SIMULADA -->
+<div id="payment-gate-modal" class="modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 1100; justify-content: center; align-items: center;">
+    <div class="modal-content" style="background: #1e1e2f; color: white; padding: 25px; border-radius: 12px; width: 90%; max-width: 430px; border: 2px solid #1e90ff; box-shadow: 0 10px 25px rgba(30, 144, 255, 0.3);">
+        <h3 style="color: #1e90ff; margin-top: 0; display: flex; align-items: center; gap: 10px;">🔒 Pago Seguro Encriptado</h3>
+        <p style="font-size: 0.85rem; color: #a4b0be; margin-bottom: 20px;">Estás pagando productos de importación internacional. Introduce una tarjeta simulada para completar tu orden.</p>
+        
+        <div style="display: flex; flex-direction: column; gap: 15px;">
+            <div>
+                <label style="font-size: 0.8rem; color: #747d8c; font-weight: bold; display: block; margin-bottom: 5px;">NÚMERO DE TARJETA</label>
+                <input type="text" id="card-number" placeholder="4152 •••• •••• 4242" maxlength="19" style="width: 100%; padding: 12px; border-radius: 6px; border: 1px solid #2f3542; background: #2f3542; color: white; font-size: 1rem; letter-spacing: 2px;">
+            </div>
+            
+            <div style="display: flex; gap: 15px;">
+                <div style="flex: 1;">
+                    <label style="font-size: 0.8rem; color: #747d8c; font-weight: bold; display: block; margin-bottom: 5px;">EXPIRACIÓN</label>
+                    <input type="text" id="card-expiry" placeholder="MM/AA" maxlength="5" style="width: 100%; padding: 12px; border-radius: 6px; border: 1px solid #2f3542; background: #2f3542; color: white; text-align: center;">
+                </div>
+                <div style="flex: 1;">
+                    <label style="font-size: 0.8rem; color: #747d8c; font-weight: bold; display: block; margin-bottom: 5px;">CVC (SEGURIDAD)</label>
+                    <input type="password" id="card-cvc" placeholder="•••" maxlength="3" style="width: 100%; padding: 12px; border-radius: 6px; border: 1px solid #2f3542; background: #2f3542; color: white; text-align: center; letter-spacing: 3px;">
+                </div>
+            </div>
+
+            <div style="margin-top: 10px; background: #222235; padding: 12px; border-radius: 6px; display: flex; justify-content: space-between; align-items: center;">
+                <span style="font-size: 0.9rem;">Monto a Retener:</span>
+                <strong id="gate-total-price" style="color: #2ed573; font-size: 1.2rem;">$0.00</strong>
+            </div>
+
+            <button onclick="processGatePayment()" id="btn-gate-pay" style="background: #2ed573; color: white; border: none; padding: 14px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 1rem; width: 100%; transition: background 0.3s;">Procesar Pago Simulado de Importación 💳</button>
+            <button onclick="closePaymentGate()" style="background: transparent; border: none; color: #ff4757; cursor: pointer; text-decoration: underline; font-size: 0.85rem; margin-top: 5px;">Cancelar Transacción</button>
+        </div>
+    </div>
+</div>
+
+    <div class="cart-floating-btn" id="history-icon-btn" onclick="toggleHistoryModal()" style="bottom: 90px; background: #341f97; right: 20px;">
+        📜
+    </div>
+
+    <div class="cart-modal-overlay" id="history-modal" style="display: none;">
+        <div class="cart-modal-content" style="background: #1e1e2f; color: white;">
+            <div class="cart-modal-header" style="border-bottom: 1px solid #ff4757;">
+                <h3>Historial de la Cartera y Pedidos 📜</h3>
+                <span class="close-modal-btn" onclick="toggleHistoryModal()">&times;</span>
+            </div>
+            <div class="cart-modal-body" id="history-items-container" style="padding: 15px;">
+                </div>
+        </div>
+    </div>
+
+    <div id="admin-panel" style="display: none; background: #151522; color: white; padding: 30px; margin-top: 40px; border-top: 4px solid #ff4757;">
+        <div style="max-width: 1200px; margin: 0 auto;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #2f3542; padding-bottom: 15px; margin-bottom: 20px;">
+                <h2>🛠️ Consola de Auditoría y Control de Inventario CMS</h2>
+                <button onclick="closeAdminPanel()" style="background: #ff4757; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: bold;">Cerrar Panel ❌</button>
+            </div>
+
+            <div style="background: #222235; padding: 15px; border-radius: 8px; margin-bottom: 25px; display: flex; justify-content: space-between; align-items: center;">
+                <span>Fondo de Reserva Total Requerido (Suma de Carteras Simuladas):</span>
+                <strong id="admin-total-liquidity" style="color: #2ed573; font-size: 1.5rem;">$0.00</strong>
+            </div>
+
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 25px;">
+                <div>
+                    <h3 style="color: #ffa502; margin-bottom: 15px;">Añadir Nuevo Producto</h3>
+                    <form id="add-product-form" onsubmit="createNewProduct(event)" style="display: flex; flex-direction: column; gap: 10px;">
+                        <input type="text" id="new-title" placeholder="Título del producto" required style="padding: 10px; background: #222235; color: white; border: 1px solid #2f3542; border-radius: 6px;">
+                        <input type="number" id="new-price" placeholder="Precio ($)" required style="padding: 10px; background: #222235; color: white; border: 1px solid #2f3542; border-radius: 6px;">
+                        <input type="text" id="new-desc" placeholder="Descripción breve" required style="padding: 10px; background: #222235; color: white; border: 1px solid #2f3542; border-radius: 6px;">
+                        <input type="number" id="new-tickets" placeholder="Boletos Gacha de regalo" required style="padding: 10px; background: #222235; color: white; border: 1px solid #2f3542; border-radius: 6px;">
+                        <input type="text" id="new-images" placeholder="URLs de imágenes (separadas por comas)" style="padding: 10px; background: #222235; color: white; border: 1px solid #2f3542; border-radius: 6px;">
+                        <select id="new-category" style="padding: 10px; background: #222235; color: white; border: 1px solid #2f3542; border-radius: 6px;">
+                            <option value="premium">Colección Premium</option>
+                            <option value="budget">Artículo Viral Económico</option>
+                        </select>
+                        <button type="submit" style="background: #2ed573; color: white; border: none; padding: 12px; font-weight: bold; border-radius: 6px; cursor: pointer;">Guardar Producto Catálogo 💾</button>
+                    </form>
+                </div>
+
+                <div>
+                    <h3 style="color: #ffa502; margin-bottom: 15px;">Auditoría de Usuarios Activos</h3>
+                    <table style="width: 100%; border-collapse: collapse; background: #222235; border-radius: 8px; overflow: hidden;">
+                        <thead>
+                            <tr style="background: #2f3542; text-align: left;">
+                                <th style="padding: 10px;">ID Usuario</th>
+                                <th style="padding: 10px;">Cartera</th>
+                                <th style="padding: 10px;">Tickets</th>
+                            </tr>
+                        </thead>
+                        <tbody id="admin-users-table"></tbody>
+                    </table>
+                </div>
+
+                <div>
+                    <h3 style="color: #ff4757; margin-bottom: 15px;">Bitácora Espejo en Tiempo Real</h3>
+                    <div id="admin-live-logs" style="background: #000; font-family: monospace; font-size: 0.85rem; color: #2ed573; padding: 15px; border-radius: 8px; height: 250px; overflow-y: auto; border: 1px solid #ff4757;"></div>
+                </div>
+            </div>
+
+            <div style="margin-top: 30px; background: #222235; padding: 20px; border-radius: 8px;">
+                <h3 style="color: #ffa502; margin-top: 0; margin-bottom: 15px;">Gestión y Edición Avanzada de Catálogo</h3>
+                <div id="admin-inventory-list" style="display: flex; flex-direction: column; gap: 10px; max-height: 350px; overflow-y: auto;"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

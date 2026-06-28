@@ -1,0 +1,454 @@
+/* ==========================================
+   CONFIGURACIÓN GENERAL Y COLORES PREMIUM
+   ========================================== */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+body {
+    background: linear-gradient(180deg, #f0f3f8 0%, #e6ecf5 100%);
+    color: #2f3542;
+    min-height: 100vh;
+    padding-bottom: 80px;
+}
+
+/* BARRA SUPERIOR */
+.header-wallet {
+    background: linear-gradient(135deg, #1e1e2f, #111119);
+    color: #fff;
+    padding: 15px 30px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+
+.logo {
+    font-size: 1.5rem;
+    font-weight: bold;
+    letter-spacing: 1px;
+    color: #ff4757;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+}
+
+.wallet-container {
+    background: rgba(255, 255, 255, 0.1);
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-weight: bold;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+#wallet-balance {
+    color: #2ed573;
+    margin-left: 5px;
+}
+
+/* CONTENEDOR PRINCIPAL Y SECCIONES */
+.main-container {
+    max-width: 1200px;
+    margin: 30px auto;
+    padding: 0 20px;
+}
+
+.products-section {
+    margin-bottom: 40px;
+}
+
+.products-section h2 {
+    font-size: 1.3rem;
+    margin-bottom: 20px;
+    color: #1e1e2f;
+    border-left: 4px solid #ff4757;
+    padding-left: 10px;
+}
+
+.products-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 25px;
+}
+
+/* TARJETAS DE PRODUCTOS */
+.product-card {
+    background: #fff;
+    border-radius: 12px;
+    padding: 15px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    cursor: pointer;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.product-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+}
+
+.product-img-placeholder {
+    width: 100%;
+    height: 180px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2.5rem;
+    margin-bottom: 12px;
+}
+
+.product-title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #2f3542;
+    margin-bottom: 8px;
+}
+
+.product-price {
+    font-size: 1.2rem;
+    font-weight: bold;
+    color: #2ed573;
+    margin-bottom: 12px;
+}
+
+.btn-buy {
+    background-color: #ff4757;
+    color: white;
+    border: none;
+    padding: 8px 15px;
+    border-radius: 6px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+/* ==========================================
+   SECCIÓN DE LA RULETA GACHA CORREGIDA [FASE_5]
+   ========================================== */
+.gacha-section {
+    background: #fff;
+    border-radius: 16px;
+    padding: 30px;
+    box-shadow: 0 5px 20px rgba(0,0,0,0.05);
+    margin-top: 5px;
+}
+
+.gacha-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 30px;
+}
+
+.gacha-box {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 20px;
+}
+
+.tickets-display {
+    font-size: 1.4rem;
+    font-weight: bold;
+    color: #1e1e2f;
+    margin: 15px 0;
+    background: #f1f2f6;
+    padding: 8px 20px;
+    border-radius: 30px;
+}
+
+#tickets-count {
+    color: #ffa502;
+}
+
+.btn-ad, .btn-spin {
+    width: 100%;
+    max-width: 300px;
+    padding: 12px 20px;
+    border-radius: 8px;
+    font-weight: bold;
+    font-size: 1rem;
+    border: none;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.2s;
+}
+
+.btn-ad { background: #ffa502; color: white; }
+.btn-ad:hover { background: #e09000; }
+
+.btn-spin { background: linear-gradient(135deg, #ff4757, #ff6b81); color: white; }
+.btn-spin:hover { transform: scale(1.02); }
+
+/* CONTENEDOR FÍSICO DE LA RULETA */
+.wheel-wrapper {
+    position: relative;
+    width: 260px;
+    height: 260px;
+    margin: 20px auto;
+}
+
+.wheel-pointer {
+    position: absolute;
+    top: -12px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 10;
+    color: #ff4757;
+    font-size: 1.8rem;
+}
+
+.wheel {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    border: 8px solid #1e1e2f;
+    position: relative;
+    overflow: hidden;
+    transition: transform 4s cubic-bezier(0.1, 0.8, 0.1, 1);
+    background: #fff;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+}
+
+.segment {
+    position: absolute;
+    width: 50%;
+    height: 50%;
+    left: 50%;
+    top: 50%;
+    transform-origin: 0% 0%;
+    transform: rotate(calc(72deg * var(--i))) skewY(18deg); /* 5 segmentos exactos */
+    border: 1px solid rgba(255,255,255,0.2);
+}
+
+.segment span {
+    position: absolute;
+    left: 20px;
+    top: 35px;
+    font-weight: 800;
+    color: white;
+    font-size: 1.1rem;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.5);
+    transform: skewY(-18deg) rotate(36deg); /* Estabilizar el texto en el centro */
+}
+
+/* MODALES RESPONSIVOS */
+.product-modal-overlay, .cart-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.product-modal-content, .cart-modal-content {
+    background: white;
+    padding: 30px;
+    border-radius: 12px;
+    width: 90%;
+    max-width: 750px;
+    position: relative;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.cart-modal-content { max-width: 500px; }
+
+.close-modal-btn {
+    position: absolute;
+    top: 15px;
+    right: 20px;
+    font-size: 1.8rem;
+    cursor: pointer;
+    color: #a4b0be;
+}
+
+.product-modal-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 25px;
+}
+
+@media (max-width: 600px) {
+    .product-modal-grid { grid-template-columns: 1fr; }
+}
+
+.main-image-viewport {
+    width: 100%;
+    height: 220px;
+    background-color: #f1f2f6;
+    border-radius: 8px;
+    background-size: cover;
+    background-position: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #a4b0be;
+}
+
+.gallery-carousel-controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 10px;
+}
+
+.gallery-carousel-controls button {
+    background: #2f3542;
+    color: white;
+    border: none;
+    padding: 5px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.detail-price {
+    font-size: 1.6rem;
+    font-weight: bold;
+    color: #2ed573;
+    margin-bottom: 10px;
+}
+
+.detail-description {
+    color: #57606f;
+    font-size: 0.95rem;
+    margin-bottom: 15px;
+    line-height: 1.4;
+}
+
+.detail-reward-badge {
+    background: #fffaf0;
+    border: 1px dashed #ffa502;
+    padding: 8px;
+    color: #ffa502;
+    font-weight: bold;
+    border-radius: 6px;
+    display: inline-block;
+}
+
+.btn-checkout {
+    background: linear-gradient(135deg, #ff4757, #ff6b81);
+    color: white;
+    border: none;
+    padding: 12px;
+    font-weight: bold;
+    width: 100%;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+/* BOTÓN FLOTANTE DEL CARRITO */
+.cart-floating-btn {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: #ff4757;
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    cursor: pointer;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+    z-index: 999;
+}
+
+.cart-floating-badge {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    background: white;
+    color: #ff4757;
+    font-size: 0.8rem;
+    font-weight: bold;
+    padding: 2px 6px;
+    border-radius: 50%;
+}
+
+.cart-modal-header {
+    border-bottom: 1px solid #f1f2f6;
+    padding-bottom: 10px;
+    margin-bottom: 15px;
+}
+
+.cart-modal-footer {
+    border-top: 1px solid #f1f2f6;
+    padding-top: 15px;
+    margin-top: 15px;
+}
+
+.cart-total-display {
+    font-size: 1.2rem;
+    font-weight: bold;
+    margin-bottom: 10px;
+    text-align: right;
+}
+/* Tarjetas diferenciadas por proveedor */
+.premium-card {
+    border: 1px solid rgba(255, 165, 2, 0.2);
+    box-shadow: 0 4px 12px rgba(255, 165, 2, 0.05);
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+.premium-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 6px 18px rgba(255, 165, 2, 0.15);
+}
+
+.budget-card {
+    border: 1px solid rgba(30, 144, 255, 0.2);
+    box-shadow: 0 4px 12px rgba(30, 144, 255, 0.05);
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+.budget-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 6px 18px rgba(30, 144, 255, 0.15);
+}
+
+/* Insignias internas */
+.badge-delivery {
+    display: inline-block;
+    font-family: inherit;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+}
+/* ==========================================
+   HOVER Y BORDES DINÁMICOS POR PROVEEDOR
+   ========================================== */
+.premium-card {
+    border: 1px solid rgba(255, 165, 2, 0.2) !important;
+    box-shadow: 0 4px 12px rgba(255, 165, 2, 0.05);
+}
+.premium-card:hover {
+    border-color: #ffa502 !important;
+    box-shadow: 0 8px 20px rgba(255, 165, 2, 0.15) !important;
+}
+
+.budget-card {
+    border: 1px solid rgba(30, 144, 255, 0.2) !important;
+    box-shadow: 0 4px 12px rgba(30, 144, 255, 0.05);
+}
+.budget-card:hover {
+    border-color: #1e90ff !important;
+    box-shadow: 0 8px 20px rgba(30, 144, 255, 0.15) !important;
+}
+
+/* Ajustes de enfoque para el formulario de entrega */
+#shipping-form-container input:focus {
+    border-color: #ff4757 !important;
+    background-color: #ffffff !important;
+    outline: none;
+    box-shadow: 0 0 5px rgba(255, 71, 87, 0.2);
+}
