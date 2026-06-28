@@ -1,3 +1,20 @@
+// Import the functions you need from the SDKs you need
+import { initializeApp } from "firebase/app";
+// TODO: Add SDKs for Firebase products that you want to use
+// https://firebase.google.com/docs/web/setup#available-libraries
+
+// Your web app's Firebase configuration
+const firebaseConfig = {
+  apiKey: "AIzaSyAhOg_Sg8GS-18HhbTKFEg9A4IYmU4frXo",
+  authDomain: "latiendita-aeeab.firebaseapp.com",
+  projectId: "latiendita-aeeab",
+  storageBucket: "latiendita-aeeab.firebasestorage.app",
+  messagingSenderId: "44020068652",
+  appId: "1:44020068652:web:71967812fd9f0f1ee47c89"
+};
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
 // ==========================================
 // BASE DE DATOS LOCAL E INVENTARIO BASE UNIFICADO
 // ==========================================
