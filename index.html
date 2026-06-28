@@ -21,7 +21,6 @@
 
     <main class="main-container">
         
-        <!-- SECCIÓN DE GARANTÍA Y ENVÍOS -->
         <section class="banner-benefits">
             <div class="benefit-item">
                 <span class="benefit-icon">🚚</span>
@@ -39,7 +38,6 @@
             </div>
         </section>
 
-        <!-- FILTROS Y BÚSQUEDA REAL -->
         <section class="search-filter-container">
             <div class="search-box">
                 <input type="text" id="store-search-input" oninput="filterStoreProducts()" placeholder="🔍 Buscar productos por nombre o palabras clave...">
@@ -60,7 +58,6 @@
             </div>
         </section>
         
-        <!-- SECCIÓN MÁS VENDIDOS -->
         <section class="store-section" id="section-bestsellers">
             <div class="section-title-wrapper">
                 <h2>🔥 Los Más Vendidos</h2>
@@ -69,7 +66,6 @@
             <div id="bestsellers-grid" class="products-grid"></div>
         </section>
 
-        <!-- SECCIÓN CATÁLOGO COMPLETO -->
         <section class="store-section">
             <div class="section-title-wrapper">
                 <h2>📦 Catálogo Completo de Productos</h2>
@@ -77,7 +73,6 @@
             <div id="main-products-grid" class="products-grid"></div>
         </section>
 
-        <!-- RASTREO DE PEDIDOS -->
         <section class="tracking-section">
             <h3>📦 Sistema de Rastreo de Pedidos</h3>
             <p>Ingresa tu número de teléfono o ID de orden para conocer el estado de tu paquete en tiempo real.</p>
@@ -88,7 +83,6 @@
             <div id="tracking-result-display" class="tracking-result"></div>
         </section>
 
-        <!-- RULETA GACHA DE CASHBACK -->
         <section class="gacha-section">
             <div class="gacha-container">
                 <div class="gacha-box info-box">
@@ -114,7 +108,6 @@
         </section>
     </main>
 
-    <!-- MODAL DETALLE DE PRODUCTO Y RESEÑAS -->
     <div class="product-modal-overlay" id="product-detail-modal" style="display: none;">
         <div class="product-modal-content">
             <span class="close-modal-btn" onclick="closeProductDetail()">&times;</span>
@@ -138,7 +131,6 @@
                 </div>
             </div>
 
-            <!-- SECCIÓN DE RESEÑAS -->
             <div class="reviews-system-section">
                 <h3>💬 Reseñas de Clientes e Incentivo</h3>
                 <p class="review-incentive-text">✍️ Deja tu reseña honesta sobre este producto y recibe de inmediato <strong>1 Boleto Gratis</strong> para la ruleta.</p>
@@ -161,7 +153,6 @@
         </div>
     </div>
     
-    <!-- MODAL DEL CARRITO -->
     <div class="cart-modal-overlay" id="cart-modal" style="display: none;">
         <div class="cart-modal-content-store">
             <div class="cart-modal-header-box">
@@ -190,7 +181,6 @@
         </div>
     </div>
 
-    <!-- MODAL PASARELA DE PAGO ENCRIPTADA -->
     <div id="payment-gate-modal" class="modal-overlay-gate" style="display: none;">
         <div class="modal-content-gate">
             <h3>🔒 Pasarela Segura de Pago Anticipado</h3>
@@ -223,7 +213,6 @@
         </div>
     </div>
 
-    <!-- BOTONES FLOTANTES -->
     <div class="cart-floating-btn" onclick="toggleCartModal()">
         🛒 <span class="cart-floating-badge" id="cart-badge">0</span>
     </div>
@@ -232,7 +221,6 @@
         📜
     </div>
 
-    <!-- MODAL DE HISTORIAL DE TRANSACCIONES -->
     <div class="cart-modal-overlay" id="history-modal" style="display: none;">
         <div class="cart-modal-content-store dark-history-modal">
             <div class="cart-modal-header-box">
@@ -243,7 +231,6 @@
         </div>
     </div>
 
-    <!-- PANEL DE ADMINISTRACIÓN CMS COMPLETO -->
     <div id="admin-panel" class="admin-panel-dashboard" style="display: none;">
         <div class="admin-dashboard-wrapper">
             <div class="admin-header-dash">
@@ -263,7 +250,6 @@
             </div>
 
             <div class="admin-grid-layout">
-                <!-- FORMULARIO DE PRODUCTOS -->
                 <div class="admin-block-box">
                     <h3>Añadir Nuevo Producto al Catálogo</h3>
                     <form id="add-product-form" onsubmit="createNewProduct(event)" class="admin-form-dash">
@@ -281,7 +267,6 @@
                     </form>
                 </div>
 
-                <!-- BITÁCORA MAESTRA DE CLIENTES Y PEDIDOS -->
                 <div class="admin-block-box wide-block-dash">
                     <h3>📋 Bitácora Maestra de Pedidos Recibidos (Clientes)</h3>
                     <p style="font-size: 0.85rem; color: #a4b0be; margin-bottom: 10px;">Visualiza los datos completos de envío, total e historial para el seguimiento logístico y control de los más vendidos.</p>
@@ -305,17 +290,15 @@
                 </div>
             </div>
 
-            <!-- AUDITORÍA DE INVENTARIO -->
             <div class="admin-block-box inventory-management-block">
                 <h3>Gestión Avanzada y Edición de Productos</h3>
                 <div id="admin-inventory-list" class="admin-inventory-flex-list"></div>
             </div>
         </div>
     </div>
-<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
-<script src="app.js"></script>
-    
+
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
     <script src="app.js"></script>
 </body>
 </html>
