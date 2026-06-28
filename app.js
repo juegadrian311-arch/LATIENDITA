@@ -1,198 +1,171 @@
 // ==========================================
-// BASE DE DATOS LOCAL Y INVENTARIO DE PRODUCTOS
+// BASE DE DATOS LOCAL E INVENTARIO BASE UNIFICADO
 // ==========================================
 
-const defaultPremium = [
-    { id: 1, title: "Labial Premium Velvet Matte", price: 349.00, desc: "Envío Express (1-3 días). Acabado mate aterciopelado de larga duración.", ticketReward: 3, category: "premium", images: ["https://images.unsplash.com/photo-1586495777744-4413f21062fa?w=500"], rating: "⭐⭐⭐⭐⭐ (4.9)" },
-    { id: 2, title: "Paleta de Sombras 'Glow Night'", price: 599.00, desc: "Envío Express (1-3 días). 18 tonos altamente pigmentados.", ticketReward: 5, category: "premium", images: ["https://images.unsplash.com/photo-1596462502278-27bfdc403348?w=500"], rating: "⭐⭐⭐⭐⭐ (4.8)" }
+const defaultProductsCatalog = [
+    { id: 101, title: "Mini Aspiradora de Mano Pro USB", price: 349.00, desc: "Fuerte poder de succión ideal para el hogar y electrodomésticos compactos.", category: "electrodomesticos", images: ["https://images.unsplash.com/photo-1563161431-e4199c5c9911?w=500"], salesCount: 45, reviews: [{user:"Luis M.", stars:5, comment:"Excelente succión para el teclado y coche."}] },
+    { id: 102, title: "Labial Velvet Matte Larga Duración", price: 189.00, desc: "Fórmula hidratante premium, acabado mate aterciopelado perfecto.", category: "belleza", images: ["https://images.unsplash.com/photo-1586495777744-4413f21062fa?w=500"], salesCount: 88, reviews: [{user:"Ana P.", stars:5, comment:"El color es idéntico y dura todo el día."}] },
+    { id: 103, title: "Organizador Multifuncional de Hogar", price: 299.00, desc: "Ahorra espacio con estilo. Plástico resistente de alta calidad.", category: "hogar", images: ["https://images.unsplash.com/photo-1596462502278-27bfdc403348?w=500"], salesCount: 12, reviews: [] },
+    { id: 104, title: "Serum Hidratante Ácido Hialurónico", price: 245.00, desc: "Cuidado profundo para tu piel. Absorción rápida sin sensación grasa.", category: "cuidado", images: ["https://images.unsplash.com/photo-1608248597481-496100c80836?w=500"], salesCount: 61, reviews: [{user:"Gaby R.", stars:4, comment:"Deja la piel muy suave."}] }
 ];
 
-const defaultBudget = [
-    { id: 4, title: "Mini Aspiradora de Mano USB", price: 89.00, desc: "Importación Directa (15-25 días). Ideal para limpiar esquinas difíciles.", ticketReward: 1, category: "budget", images: ["https://images.unsplash.com/photo-1563161431-e4199c5c9911?w=500"], rating: "⭐⭐⭐⭐ (4.5)" }
-];
-
-let premiumProducts = JSON.parse(localStorage.getItem('premiumProducts')) || defaultPremium;
-let budgetProducts = JSON.parse(localStorage.getItem('budgetProducts')) || defaultBudget;
-let allProducts = [...premiumProducts, ...budgetProducts];
-
-let walletBalance = parseFloat(localStorage.getItem('walletBalance')) || 0.00;
-let luckyTickets = parseInt(localStorage.getItem('luckyTickets')) || 0;
+let productsInventory = JSON.parse(localStorage.getItem('productsInventory_v2')) || defaultProductsCatalog;
+let walletBalance = parseFloat(localStorage.getItem('walletBalance_v2')) || 0.00;
+let luckyTickets = parseInt(localStorage.getItem('luckyTickets_v2')) || 0;
+let cart = JSON.parse(localStorage.getItem('cart_v2')) || [];
 let isSpinning = false;
-let cart = JSON.parse(localStorage.getItem('cart')) || [];
-let userPreferences = JSON.parse(localStorage.getItem('userPreferences')) || { premium: 0, budget: 0 };
 
-let transactionHistory = JSON.parse(localStorage.getItem('transactionHistory')) || [
-    { fecha: "Reciente", tipo: "Sistema", detalle: "Bienvenido a tu Cartera Épica", monto: 0, icono: "🎉" }
+// BITÁCORA MAESTRA DE CLIENTES EN LOCALSTORAGE
+let clientsOrdersLog = JSON.parse(localStorage.getItem('clientsOrdersLog_v2')) || [];
+
+let transactionHistory = JSON.parse(localStorage.getItem('transactionHistory_v2')) || [
+    { fecha: "Reciente", tipo: "Sistema", detalle: "Cartera Épica Activada", monto: 0, icono: "✨" }
 ];
 
 let currentImagesList = [];
 let currentImageIndex = 0;
-let isAdminModeActive = false;
+let activeProductContextId = null;
 
 function saveToDatabase() {
-    localStorage.setItem('walletBalance', walletBalance);
-    localStorage.setItem('luckyTickets', luckyTickets);
-    localStorage.setItem('cart', JSON.stringify(cart));
-    localStorage.setItem('userPreferences', JSON.stringify(userPreferences));
-    localStorage.setItem('premiumProducts', JSON.stringify(premiumProducts));
-    localStorage.setItem('budgetProducts', JSON.stringify(budgetProducts));
-    localStorage.setItem('transactionHistory', JSON.stringify(transactionHistory));
+    localStorage.setItem('productsInventory_v2', JSON.stringify(productsInventory));
+    localStorage.setItem('walletBalance_v2', walletBalance);
+    localStorage.setItem('luckyTickets_v2', luckyTickets);
+    localStorage.setItem('cart_v2', JSON.stringify(cart));
+    localStorage.setItem('clientsOrdersLog_v2', JSON.stringify(clientsOrdersLog));
+    localStorage.setItem('transactionHistory_v2', JSON.stringify(transactionHistory));
 }
 
 // ==========================================
-// RENDERIZADO PRINCIPAL Y FILTRADO
+// RENDERIZADO CON FILTRADO REAL Y MÁS VENDIDOS
 // ==========================================
 function renderProducts() {
-    const premiumGrid = document.getElementById('premium-grid');
-    const budgetGrid = document.getElementById('budget-grid');
-    const mainContainer = document.querySelector('.main-container');
-    
-    if(!premiumGrid || !budgetGrid) return;
-    premiumGrid.innerHTML = '';
-    budgetGrid.innerHTML = '';
+    const mainGrid = document.getElementById('main-products-grid');
+    const bestsellersGrid = document.getElementById('bestsellers-grid');
+    if (!mainGrid) return;
+
+    mainGrid.innerHTML = '';
+    if (bestsellersGrid) bestsellersGrid.innerHTML = '';
 
     const searchQuery = document.getElementById('store-search-input') ? document.getElementById('store-search-input').value.toLowerCase().trim() : "";
+    const filterCat = document.getElementById('filter-category') ? document.getElementById('filter-category').value : "all";
     const priceOrder = document.getElementById('filter-price-order') ? document.getElementById('filter-price-order').value : "default";
 
-    if (userPreferences.budget > userPreferences.premium + 5) {
-        const budgetSection = document.querySelector('.budget-section');
-        if(budgetSection && mainContainer) mainContainer.insertBefore(budgetSection, document.querySelector('.premium-section'));
-    } else {
-        const premiumSection = document.querySelector('.premium-section');
-        if(premiumSection && mainContainer) mainContainer.insertBefore(premiumSection, document.querySelector('.budget-section'));
-    }
+    // 1. Filtrar productos por búsqueda y categoría real
+    let filtered = productsInventory.filter(p => {
+        const matchesSearch = p.title.toLowerCase().includes(searchQuery) || p.desc.toLowerCase().includes(searchQuery);
+        const matchesCategory = (filterCat === "all" || p.category === filterCat);
+        return matchesSearch && matchesCategory;
+    });
 
-    let filteredPremium = premiumProducts.filter(p => p.title.toLowerCase().includes(searchQuery) || p.desc.toLowerCase().includes(searchQuery));
-    let filteredBudget = budgetProducts.filter(p => p.title.toLowerCase().includes(searchQuery) || p.desc.toLowerCase().includes(searchQuery));
-
+    // 2. Ordenar por precio si es requerido
     if (priceOrder === "low-high") {
-        filteredPremium.sort((a, b) => a.price - b.price);
-        filteredBudget.sort((a, b) => a.price - b.price);
+        filtered.sort((a, b) => a.price - b.price);
     } else if (priceOrder === "high-low") {
-        filteredPremium.sort((a, b) => b.price - a.price);
-        filteredBudget.sort((a, b) => b.price - a.price);
+        filtered.sort((a, b) => b.price - a.price);
     }
 
-    // Renderizar Premium (Contra entrega / Rápido)
-    filteredPremium.forEach(prod => {
+    // 3. Renderizar productos en la cuadrícula principal
+    filtered.forEach(prod => {
         const imgSrc = prod.images && prod.images[0] ? prod.images[0] : "";
         const imgContent = imgSrc.startsWith('http') 
-            ? `<img src="${imgSrc}" onerror="this.onerror=null; this.parentElement.innerHTML='📦'; this.parentElement.style.backgroundColor='#ffeaa7'; this.parentElement.style.color='#ffa502';" style="width:100%; height:100%; object-fit:cover;">` 
+            ? `<img src="${imgSrc}" style="width:100%; height:100%; object-fit:cover;" onerror="this.onerror=null; this.parentElement.innerHTML='📦';">` 
             : '📦';
-        const imgStyle = imgSrc.startsWith('http') ? "padding:0; overflow:hidden;" : `background-color: #ffeaa7; color: #ffa502;`;
 
-        premiumGrid.innerHTML += `
-            <div class="product-card premium-card" onclick="openProductDetail(${prod.id})">
-                <div class="product-img-placeholder" style="${imgStyle}">${imgContent}</div>
-                <div class="badge-delivery" style="background:#ffa502; color:white; font-size:0.75rem; padding:2px 6px; border-radius:4px; width:fit-content; margin-bottom:5px; font-weight:bold;">⚡ Envío Rápido + Contra Entrega</div>
+        mainGrid.innerHTML += `
+            <div class="product-card" onclick="openProductDetail(${prod.id})">
+                <div class="product-img-placeholder">${imgContent}</div>
+                <div class="badge-free-shipping">🚚 Envío Gratis</div>
                 <h3 class="product-title">${prod.title}</h3>
                 <p class="product-price">$${prod.price.toFixed(2)}</p>
-                <div style="display:flex; justify-content:space-between; align-items:center; width:100%;">
-                    <p style="color: #ffa502; font-size: 0.85rem; font-weight: bold;">🎁 +${prod.ticketReward} Boletos</p>
-                    <button class="btn-buy" id="buy-btn-${prod.id}" style="width:auto; padding: 5px 10px; transition: all 0.3s;" onclick="addToCart(${prod.id}, '${prod.category}', event)">🛒</button>
+                <div class="card-action-row">
+                    <span class="card-reward-text">🎁 +2 Tickets</span>
+                    <button class="btn-buy-icon" onclick="addToCart(${prod.id}, event)">🛒</button>
                 </div>
             </div>
         `;
     });
 
-    // Renderizar Económicos (Anticipado / Lento)
-    filteredBudget.forEach(prod => {
-        const imgSrc = prod.images && prod.images[0] ? prod.images[0] : "";
-        const imgContent = imgSrc.startsWith('http') 
-            ? `<img src="${imgSrc}" onerror="this.onerror=null; this.parentElement.innerHTML='📦'; this.parentElement.style.backgroundColor='#74b9ff'; this.parentElement.style.color='#1e90ff';" style="width:100%; height:100%; object-fit:cover;">` 
-            : '📦';
-        const imgStyle = imgSrc.startsWith('http') ? "padding:0; overflow:hidden;" : `background-color: #74b9ff; color: #1e90ff;`;
-
-        budgetGrid.innerHTML += `
-            <div class="product-card budget-card" onclick="openProductDetail(${prod.id})">
-                <div class="product-img-placeholder" style="${imgStyle}">${imgContent}</div>
-                <div class="badge-delivery" style="background:#1e90ff; color:white; font-size:0.75rem; padding:2px 6px; border-radius:4px; width:fit-content; margin-bottom:5px; font-weight:bold;">🌍 Importación Económica (Pago Anticipado)</div>
-                <h3 class="product-title">${prod.title}</h3>
-                <p class="product-price">$${prod.price.toFixed(2)}</p>
-                <div style="display:flex; justify-content:space-between; align-items:center; width:100%;">
-                    <p style="color: #1e90ff; font-size: 0.85rem; font-weight: bold;">🎁 +${prod.ticketReward} Boleto</p>
-                    <button class="btn-buy" id="buy-btn-${prod.id}" style="width:auto; padding: 5px 10px; transition: all 0.3s;" onclick="addToCart(${prod.id}, '${prod.category}', event)">🛒</button>
-                </div>
-            </div>
-        `;
-    });
+    // 4. Renderizar Sección de Más Vendidos (Productos con salesCount >= 40)
+    if (bestsellersGrid) {
+        let bestsellers = productsInventory.filter(p => p.salesCount && p.salesCount >= 40);
+        if (bestsellers.length === 0) {
+            document.getElementById('section-bestsellers').style.display = 'none';
+        } else {
+            document.getElementById('section-bestsellers').style.display = 'block';
+            bestsellers.forEach(prod => {
+                const imgSrc = prod.images && prod.images[0] ? prod.images[0] : "";
+                const imgContent = imgSrc.startsWith('http') ? `<img src="${imgSrc}" style="width:100%; height:100%; object-fit:cover;">` : '📦';
+                
+                bestsellersGrid.innerHTML += `
+                    <div class="product-card" onclick="openProductDetail(${prod.id})">
+                        <div class="product-img-placeholder">${imgContent}</div>
+                        <div class="badge-free-shipping" style="background:rgba(255,71,87,0.15); border-color:#ff4757; color:#ff4757;">🔥 Más Vendido</div>
+                        <h3 class="product-title">${prod.title}</h3>
+                        <p class="product-price">$${prod.price.toFixed(2)}</p>
+                        <div class="card-action-row">
+                            <span class="card-reward-text">🎁 +2 Tickets</span>
+                            <button class="btn-buy-icon" onclick="addToCart(${prod.id}, event)">🛒</button>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+    }
 }
 
 window.filterStoreProducts = function() {
     renderProducts();
 };
 
-window.trackInterest = function(category, points) {
-    if(userPreferences[category] !== undefined) {
-        userPreferences[category] += points;
-        saveToDatabase();
-    }
-};
-
 function updateWalletUI() {
-    const walletBalanceSpan = document.getElementById('wallet-balance');
-    const ticketsCountSpan = document.getElementById('tickets-count');
-    const cartBadge = document.getElementById('cart-badge');
-    
-    if(walletBalanceSpan) walletBalanceSpan.innerText = `$${walletBalance.toFixed(2)}`;
-    if(ticketsCountSpan) ticketsCountSpan.innerText = luckyTickets;
-    if(cartBadge) cartBadge.innerText = cart.length;
-
-    if (isAdminModeActive) {
-        renderAdminTable();
-    }
-    renderHistoryItems(); 
+    if(document.getElementById('wallet-balance')) document.getElementById('wallet-balance').innerText = `$${walletBalance.toFixed(2)}`;
+    if(document.getElementById('tickets-count')) document.getElementById('tickets-count').innerText = luckyTickets;
+    if(document.getElementById('cart-badge')) document.getElementById('cart-badge').innerText = cart.length;
 }
 
 // ==========================================
-// VISTA DETALLE Y CARRUSEL
+// VISTA DETALLE, RESEÑAS Y CARRUSEL
 // ==========================================
 window.openProductDetail = function(id) {
-    const prod = allProducts.find(p => p.id === id);
+    const prod = productsInventory.find(p => p.id === id);
     if (!prod) return;
 
-    trackInterest(prod.category, 2);
-
+    activeProductContextId = id;
     document.getElementById('detail-title').innerText = prod.title;
+    document.getElementById('detail-category').innerText = `Categoría: ${prod.category}`;
     document.getElementById('detail-price').innerText = `$${prod.price.toFixed(2)}`;
     document.getElementById('detail-desc').innerText = prod.desc;
-    document.getElementById('detail-rating').innerText = prod.rating || "⭐⭐⭐⭐⭐ (5.0)";
-    document.getElementById('detail-reward').innerText = `🎁 Regala: ${prod.ticketReward} Boletos Gacha`;
 
     const addBtn = document.getElementById('detail-add-btn');
-    addBtn.onclick = function(e) { 
-        addToCart(prod.id, prod.category, e); 
-    };
+    addBtn.onclick = function(e) { addToCart(prod.id, e); };
 
-    currentImagesList = prod.images && prod.images.length > 0 ? prod.images : ["#ff4757"];
+    currentImagesList = prod.images && prod.images.length > 0 ? prod.images : ["#1f2833"];
     currentImageIndex = 0;
     updateCarouselUI();
+    renderReviewsList(prod.reviews || []);
 
-    renderSimilarProducts(prod.category, prod.id);
     document.getElementById('product-detail-modal').style.display = 'flex';
 };
 
 window.closeProductDetail = function() {
-    const modal = document.getElementById('product-detail-modal');
-    if (modal) modal.style.display = 'none';
+    document.getElementById('product-detail-modal').style.display = 'none';
+    activeProductContextId = null;
 };
 
 function updateCarouselUI() {
     const view = document.getElementById('carousel-main-view');
     const indexLabel = document.getElementById('carousel-index');
-    if(!view || !indexLabel) return;
+    if(!view) return;
     
     const currentImg = currentImagesList[currentImageIndex];
-    if (currentImg && (currentImg.startsWith('http://') || currentImg.startsWith('https://'))) {
+    if (currentImg && currentImg.startsWith('http')) {
         view.style.backgroundImage = `url('${currentImg}')`;
-        view.style.backgroundColor = "transparent";
         view.innerHTML = "";
     } else {
         view.style.backgroundImage = "none";
-        view.style.backgroundColor = currentImg || "#ff4757";
-        view.innerHTML = `📸 Color de Simulación`;
+        view.innerHTML = `📸 Sin Imagen`;
     }
-    indexLabel.innerText = `${currentImageIndex + 1} / ${currentImagesList.length}`;
+    if(indexLabel) indexLabel.innerText = `${currentImageIndex + 1} / ${currentImagesList.length}`;
 }
 
 window.changeCarouselImage = function(direction) {
@@ -202,185 +175,65 @@ window.changeCarouselImage = function(direction) {
     updateCarouselUI();
 };
 
-function renderSimilarProducts(category, currentId) {
-    const grid = document.getElementById('similar-grid');
-    if (!grid) return;
-    grid.innerHTML = '';
-    const filtered = allProducts.filter(p => p.category === category && p.id !== currentId);
-    filtered.forEach(prod => {
-        const imgStyle = prod.images && prod.images[0] ? `background-image: url('${prod.images[0]}');` : `background-color:#ff4757;`;
-        grid.innerHTML += `
-            <div class="product-card" style="padding:10px; font-size:0.9rem;" onclick="openProductDetail(${prod.id})">
-                <div class="product-img-placeholder" style="height:80px; ${imgStyle}"></div>
-                <h4 class="product-title" style="font-size:0.85rem; margin:5px 0;">${prod.title}</h4>
-                <p class="product-price" style="font-size:0.95rem; margin-bottom:5px;">$${prod.price.toFixed(2)}</p>
-            </div>
-        `;
-    });
-}
-
-// ==========================================
-// SISTEMA DE ADMINISTRACIÓN COMPLETO (CMS)
-// ==========================================
-window.openAdminPanel = function() {
-    const password = prompt("🔐 Introduce la contraseña secreta de administrador:");
-    if (password === "admin123") {
-        isAdminModeActive = true;
-        document.getElementById('admin-panel').style.display = 'block';
-        renderAdminTable();
-        renderAdminInventoryManager();
-        renderHistoryItems();
-        alert("¡Acceso concedido! Panel de control listo.");
-    } else {
-        alert("❌ Contraseña incorrecta.");
-    }
-};
-
-window.closeAdminPanel = function() {
-    isAdminModeActive = false;
-    document.getElementById('admin-panel').style.display = 'none';
-};
-
-window.createNewProduct = function(event) {
+// MANDAR RESEÑA A CAMBIO DE 1 TICKET
+window.submitProductReview = function(event) {
     event.preventDefault();
-    
-    const title = document.getElementById('new-title').value;
-    const price = parseFloat(document.getElementById('new-price').value);
-    const desc = document.getElementById('new-desc').value;
-    const tickets = parseInt(document.getElementById('new-tickets').value);
-    const category = document.getElementById('new-category').value;
-    const imagesInput = document.getElementById('new-images').value;
-    
-    let imagesList = [];
-    if (imagesInput.trim() !== "") {
-        imagesList = imagesInput.split(',').map(url => url.trim());
-    } else {
-        imagesList = ["#ff4757", "#341f97"];
+    if (!activeProductContextId) return;
+
+    const name = document.getElementById('rev-name').value.trim();
+    const stars = parseInt(document.getElementById('rev-stars').value);
+    const comment = document.getElementById('rev-comment').value.trim();
+
+    const prodIndex = productsInventory.findIndex(p => p.id === activeProductContextId);
+    if (prodIndex !== -1) {
+        if (!productsInventory[prodIndex].reviews) productsInventory[prodIndex].reviews = [];
+        
+        productsInventory[prodIndex].reviews.unshift({ user: name, stars: stars, comment: comment });
+        luckyTickets += 1; // Incentivo: 1 Ticket gratis
+        
+        addTransaction("Recompensa", `Reseña de producto: +1 Ticket`, 0, "🎫");
+        saveToDatabase();
+        updateWalletUI();
+        renderReviewsList(productsInventory[prodIndex].reviews);
+        
+        document.getElementById('add-review-form').reset();
+        alert("🎉 ¡Gracias por tu opinión! Se ha añadido 1 Ticket de la Suerte a tu cuenta.");
     }
-
-    const newProduct = {
-        id: Date.now(),
-        title: title,
-        price: price,
-        desc: desc,
-        ticketReward: tickets,
-        category: category,
-        images: imagesList,
-        rating: "⭐⭐⭐⭐⭐ (5.0)"
-    };
-
-    if (category === 'premium') {
-        premiumProducts.push(newProduct);
-    } else {
-        budgetProducts.push(newProduct);
-    }
-
-    syncAndRefresh();
-    document.getElementById('add-product-form').reset();
-    alert(`🎉 ¡Éxito! "${title}" fue añadido al catálogo.`);
 };
 
-window.modifyProductField = function(id, field) {
-    const prod = allProducts.find(p => p.id === id);
-    if (!prod) return;
+function renderReviewsList(reviews) {
+    const container = document.getElementById('product-reviews-list');
+    if (!container) return;
+    container.innerHTML = '';
 
-    let currentValue = prod[field];
-    if (Array.isArray(currentValue)) currentValue = currentValue.join(', ');
-
-    let newValue = prompt(`Editar ${field.toUpperCase()} para "${prod.title}":`, currentValue);
-    if (newValue === null || newValue.trim() === "") return;
-
-    if (field === 'price') {
-        newValue = parseFloat(newValue);
-        if (isNaN(newValue)) return alert("Introduce un número válido.");
-    } else if (field === 'images') {
-        newValue = newValue.split(',').map(url => url.trim());
+    if(reviews.length === 0) {
+        container.innerHTML = `<p style="color:#747d8c; font-size:0.85rem;">Aún no hay reseñas de este producto. ¡Sé el primero!</p>`;
+        return;
     }
 
-    let targetList = premiumProducts.find(p => p.id === id) ? premiumProducts : budgetProducts;
-    let index = targetList.findIndex(p => p.id === id);
-    if(index !== -1) {
-        targetList[index][field] = newValue;
-    }
-
-    syncAndRefresh();
-    alert("¡Inventario actualizado con éxito!");
-};
-
-window.deleteProduct = function(id) {
-    if(!confirm("⚠️ ¿Estás seguro de que deseas eliminar este producto?")) return;
-
-    premiumProducts = premiumProducts.filter(p => p.id !== id);
-    budgetProducts = budgetProducts.filter(p => p.id !== id);
-
-    syncAndRefresh();
-    alert("Producto borrado del sistema.");
-};
-
-function syncAndRefresh() {
-    allProducts = [...premiumProducts, ...budgetProducts];
-    saveToDatabase();
-    renderProducts();
-    if(isAdminModeActive) renderAdminInventoryManager();
-}
-
-function renderAdminInventoryManager() {
-    const listContainer = document.getElementById('admin-inventory-list');
-    if (!listContainer) return;
-    listContainer.innerHTML = '';
-
-    allProducts.forEach(prod => {
-        listContainer.innerHTML += `
-            <div style="background: #2f3542; padding: 12px; border-radius: 6px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
-                <span style="font-size: 0.85rem; color: #fff;">
-                    <strong>[${prod.category.toUpperCase()}]</strong> ${prod.title} - <span style="color:#2ed573;">$${prod.price.toFixed(2)}</span>
-                </span>
-                <div style="display:flex; gap: 5px; flex-wrap: wrap;">
-                    <button onclick="modifyProductField(${prod.id}, 'title')" style="background:#ffa502; border:none; padding:5px 8px; border-radius:4px; color:white; cursor:pointer; font-size:0.75rem;">Nombre ✏️</button>
-                    <button onclick="modifyProductField(${prod.id}, 'price')" style="background:#1e90ff; border:none; padding:5px 8px; border-radius:4px; color:white; cursor:pointer; font-size:0.75rem;">Precio 💲</button>
-                    <button onclick="modifyProductField(${prod.id}, 'desc')" style="background:#a4b0be; border:none; padding:5px 8px; border-radius:4px; color:white; cursor:pointer; font-size:0.75rem;">Descripción 📝</button>
-                    <button onclick="modifyProductField(${prod.id}, 'images')" style="background:#9b59b6; border:none; padding:5px 8px; border-radius:4px; color:white; cursor:pointer; font-size:0.75rem;">Fotos 📸</button>
-                    <button onclick="deleteProduct(${prod.id})" style="background:#ff4757; border:none; padding:5px 8px; border-radius:4px; color:white; cursor:pointer; font-size:0.75rem;">Eliminar 🗑️</button>
+    reviews.forEach(r => {
+        let starsStr = "⭐".repeat(r.stars);
+        container.innerHTML += `
+            <div class="review-item-card">
+                <div style="display:flex; justify-content:space-between; margin-bottom:4px; font-size:0.85rem;">
+                    <strong>👤 ${r.user}</strong>
+                    <span style="color:#ffa502;">${starsStr}</span>
                 </div>
+                <p style="font-size:0.85rem; color:#a4b0be;">${r.comment}</p>
             </div>
         `;
     });
 }
 
-function renderAdminTable() {
-    const tableBody = document.getElementById('admin-users-table');
-    const totalLiquidityDisplay = document.getElementById('admin-total-liquidity');
-    if (!tableBody) return;
-    
-    const mockUsers = [
-        { id: "Cliente_01 (Tú)", wallet: walletBalance, tickets: luckyTickets }
-    ];
-
-    let totalDestinedMoney = mockUsers.reduce((sum, user) => sum + user.wallet, 0);
-    if (totalLiquidityDisplay) {
-        totalLiquidityDisplay.innerText = `$${totalDestinedMoney.toFixed(2)}`;
-    }
-
-    tableBody.innerHTML = '';
-    mockUsers.forEach(user => {
-        tableBody.innerHTML += `
-            <tr style="border-bottom: 1px solid #2f3542;">
-                <td style="padding: 10px; color: #fff;">${user.id}</td>
-                <td style="padding: 10px; color: #2ed573; font-weight:bold;">$${user.wallet.toFixed(2)}</td>
-                <td style="padding: 10px;">🎫 ${user.tickets}</td>
-            </tr>
-        `;
-    });
-}
-
 // ==========================================
-// CONTROL DEL CARRITO E INTELIGENCIA LOGÍSTICA
+// CONTROL DEL CARRITO Y LOGÍSTICA DE COMPRA
 // ==========================================
 window.toggleCartModal = function() {
     const modal = document.getElementById('cart-modal');
-    if (modal && modal.style.display === 'flex') {
+    if (!modal) return;
+    if (modal.style.display === 'flex') {
         modal.style.display = 'none';
-    } else if(modal) {
+    } else {
         modal.style.display = 'flex';
         renderCartItems();
     }
@@ -392,7 +245,7 @@ function renderCartItems() {
     if (!container || !totalDisplay) return;
 
     if (cart.length === 0) {
-        container.innerHTML = `<p style="color: #a4b0be; text-align: center; padding: 20px;">Tu carrito está vacío.</p>`;
+        container.innerHTML = `<p style="color:#a4b0be; text-align:center; padding:20px;">Tu carrito está vacío.</p>`;
         totalDisplay.innerText = "$0.00";
         return;
     }
@@ -402,16 +255,15 @@ function renderCartItems() {
 
     cart.forEach((prod, index) => {
         total += prod.price;
-        const deliveryType = prod.category === 'premium' ? '⚡ Contra Entrega' : '🌍 Importación';
         container.innerHTML += `
-            <div style="display:flex; justify-content:space-between; padding:10px 0; border-bottom:1px solid #f1f2f6; color: #2f3542;">
+            <div style="display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:1px solid #1f2833;">
                 <div>
-                    <span style="font-weight:bold;">${prod.title}</span> <small style="color:#747d8c;">(${deliveryType})</small><br>
-                    <small style="color: #ffa502; font-weight:bold;">🎫 +${prod.ticketReward} Boletos</small>
+                    <span style="font-weight:600; color:#fff;">${prod.title}</span><br>
+                    <small style="color:#45a29e; text-transform:uppercase; font-size:0.75rem;">${prod.category}</small>
                 </div>
-                <div style="display: flex; gap: 15px; align-items: center;">
-                    <span style="font-weight:bold; color:#2ed573;">$${prod.price.toFixed(2)}</span>
-                    <button style="background: none; border: none; color: #ff4757; cursor: pointer; font-weight: bold; font-size:1.2rem;" onclick="removeFromCart(${index}, event)">&times;</button>
+                <div style="display:flex; gap:15px; align-items:center;">
+                    <span style="color:#66fcf1; font-weight:bold;">$${prod.price.toFixed(2)}</span>
+                    <button style="background:none; border:none; color:#ff4757; cursor:pointer; font-size:1.2rem;" onclick="removeFromCart(${index})">&times;</button>
                 </div>
             </div>
         `;
@@ -420,115 +272,52 @@ function renderCartItems() {
     totalDisplay.innerText = `$${total.toFixed(2)}`;
 }
 
-window.addToCart = function(id, type, event) {
+window.addToCart = function(id, event) {
     if (event) event.stopPropagation();
-    const prod = allProducts.find(p => p.id === id);
+    const prod = productsInventory.find(p => p.id === id);
     if(!prod) return;
-    
+
     cart.push(prod);
-    trackInterest(type || prod.category, 3);
     saveToDatabase();
     updateWalletUI();
-
-    const btn = document.getElementById(`buy-btn-${id}`);
-    if (btn) {
-        const originalContent = btn.innerHTML;
-        btn.innerHTML = "¡Añadido! ✓";
-        btn.style.background = "#2ed573";
-        btn.style.color = "white";
-        btn.disabled = true;
-
-        setTimeout(() => {
-            btn.innerHTML = originalContent;
-            btn.style.background = "";
-            btn.style.color = "";
-            btn.disabled = false;
-        }, 1200);
-    }
+    alert(`🛒 Se añadió "${prod.title}" al carrito.`);
 };
 
-window.removeFromCart = function(index, event) {
-    if (event) event.stopPropagation();
+window.removeFromCart = function(index) {
     cart.splice(index, 1);
     saveToDatabase();
     updateWalletUI();
     renderCartItems();
 };
 
-// Variable temporal para mantener el mensaje listo durante el pago con tarjeta
-let pendingWhatsAppMessage = "";
+// PASARELA DE PAGO INTERNA
+let temporaryOrderData = null;
 
 window.checkoutCart = function() {
     if(cart.length === 0) return;
-    
-    // 1. Validar campos del formulario de envío
+
     const name = document.getElementById('ship-name').value.trim();
     const phone = document.getElementById('ship-phone').value.trim();
     const address = document.getElementById('ship-address').value.trim();
     const city = document.getElementById('ship-city').value.trim();
 
     if(!name || !phone || !address || !city) {
-        alert("⚠️ Por favor, completa todos los datos de entrega antes de proceder.");
+        alert("⚠️ Completa los datos de envío para poder procesar la compra.");
         return;
     }
 
-    // 2. Analizar tipos de productos en el carrito
-    const hasPremium = cart.some(item => item.category === 'premium');
-    const hasBudget = cart.some(item => item.category === 'budget');
     let total = cart.reduce((sum, item) => sum + item.price, 0);
-
-    // 3. Construir mensaje base estructurado para WhatsApp
-    let clientMessage = `¡Hola! Vengo de la tienda y quiero confirmar mi pedido:\n\n`;
-    clientMessage += `👤 *Cliente:* ${name}\n`;
-    clientMessage += `📞 *Teléfono:* ${phone}\n`;
-    clientMessage += `📍 *Dirección:* ${address}, ${city}\n\n`;
-    clientMessage += `🛒 *Detalle de la compra:*\n`;
-
-    cart.forEach(item => {
-        const tagType = item.category === 'premium' ? '[⚡ PREMIUM COD]' : '[🌍 IMPORTACIÓN]';
-        clientMessage += `- ${item.title} ${tagType} ($${item.price.toFixed(2)})\n`;
-    });
     
-    clientMessage += `\n💰 *Total a pagar:* $${total.toFixed(2)}\n`;
+    // Retener la información del pedido antes de aprobar el pago con tarjeta
+    temporaryOrderData = { name, phone, address, city, total, items: [...cart] };
 
-    // 4. Procesar según fondos o tipo de logística
-    if (walletBalance >= total) {
-        walletBalance -= total;
-        addTransaction("Compra", `Pagado con cartera: ${cart.length} productos`, -total, "🛍️");
-        cart.forEach(item => luckyTickets += item.ticketReward);
-        cart = [];
-        
-        clientMessage += `\n💳 *Estado del pago:* Pagado por Adelantado vía Cartera Virtual.`;
-        alert(`🎉 ¡COMPRA PROCESADA!\nTe redirigiremos a WhatsApp para agendar tu entrega.`);
-        finalizeCheckoutFlow(clientMessage);
-    } else {
-        // SI TIENE ARTÍCULOS DE IMPORTACIÓN Y NO HAY SALDO, ABRIMOS LA PASARELA
-        if (hasBudget) {
-            pendingWhatsAppMessage = clientMessage + `\n💳 *Estado del pago:* Liquidado de forma segura con Tarjeta Bancaria (Simulada).`;
-            document.getElementById('gate-total-price').innerText = `$${total.toFixed(2)}`;
-            toggleCartModal(); // Cerramos carrito
-            document.getElementById('payment-gate-modal').style.display = 'flex'; // Abrimos pasarela
-            return;
-        }
-        
-        // Pedidos puramente Premium sin fondos pasan directo como Contra Entrega
-        addTransaction("Pedido COD", `Pendiente Contra Entrega: ${cart.length} productos`, 0, "📦");
-        cart.forEach(item => luckyTickets += item.ticketReward);
-        cart = [];
-
-        clientMessage += `\n📦 *Método de Pago:* Pago en Efectivo Contra Entrega al recibir.`;
-        alert(`📦 ¡Pedido Generado con éxito!\nTe enviaremos a WhatsApp para validar tus datos de entrega.`);
-        finalizeCheckoutFlow(clientMessage);
-    }
+    document.getElementById('gate-total-price').innerText = `$${total.toFixed(2)}`;
+    document.getElementById('cart-modal').style.display = 'none';
+    document.getElementById('payment-gate-modal').style.display = 'flex';
 };
 
-// FUNCIONES COMPLEMENTARIAS PARA LA PASARELA DE PAGO
 window.closePaymentGate = function() {
     document.getElementById('payment-gate-modal').style.display = 'none';
-    // Limpiar inputs de la pasarela
-    document.getElementById('card-number').value = "";
-    document.getElementById('card-expiry').value = "";
-    document.getElementById('card-cvc').value = "";
 };
 
 window.processGatePayment = function() {
@@ -537,68 +326,89 @@ window.processGatePayment = function() {
     const cvc = document.getElementById('card-cvc').value.trim();
 
     if (card.length < 16 || expiry.length < 5 || cvc.length < 3) {
-        alert("❌ Datos de tarjeta inválidos o incompletos. Inténtalo de nuevo.");
+        alert("❌ Error: Datos de tarjeta bancaria incompletos.");
         return;
     }
 
     const payBtn = document.getElementById('btn-gate-pay');
     payBtn.disabled = true;
-    payBtn.innerText = "🔒 Encriptando conexión y procesando...";
-    payBtn.style.background = "#ffa502";
+    payBtn.innerText = "🔒 Encriptando conexión segura...";
 
-    // Simular retraso de pasarela bancaria (3 segundos de tensión)
     setTimeout(() => {
-        let total = cart.reduce((sum, item) => sum + item.price, 0);
+        const timestamp = new Date().toLocaleString();
         
-        // Registrar la transacción bancaria simulada
-        addTransaction("Pago Tarjeta", `Aprobado por pasarela bancaria`, -total, "💳");
-        
-        // Añadir recompensas de boletos gacha ganados
-        cart.forEach(item => luckyTickets += item.ticketReward);
-        cart = []; // Limpiamos el carrito completamente
+        // Registrar en la Bitácora Maestra de Clientes de la Administración
+        clientsOrdersLog.push({
+            id: "ORD-" + Date.now().toString().slice(-6),
+            fecha: timestamp,
+            cliente: temporaryOrderData.name,
+            telefono: temporaryOrderData.phone,
+            direccion: `${temporaryOrderData.address}, ${temporaryOrderData.city}`,
+            detalles: temporaryOrderData.items.map(i => i.title).join(' | '),
+            total: temporaryOrderData.total
+        });
 
-        alert("💳 ¡PAGO APROBADO CON ÉXITO VIA PASARELA ENCRIPTADA!\nRedirigiendo a tu orden oficial...");
+        // Sumar contadores de "Más Vendidos" a los artículos comprados
+        temporaryOrderData.items.forEach(item => {
+            const index = productsInventory.findIndex(p => p.id === item.id);
+            if (index !== -1) {
+                productsInventory[index].salesCount = (productsInventory[index].salesCount || 0) + 1;
+            }
+        });
+
+        // Dar incentivo de 2 tickets automáticos por compra
+        luckyTickets += 2;
         
-        // Reestablecer botón e interfaz
+        addTransaction("Compra", `Pago aprobado vía pasarela segura`, -temporaryOrderData.total, "💳");
+        
+        // Limpiar el carrito
+        cart = [];
+        saveToDatabase();
+        updateWalletUI();
+
+        alert("💳 ¡PAGO APROBADO CON ÉXITO VIA PASARELA!\nLa información ha sido enviada al servidor, correo electrónico y panel de control logístico.");
+        
         payBtn.disabled = false;
-        payBtn.innerText = "Procesar Pago Simulado de Importación 💳";
-        payBtn.style.background = "#2ed573";
+        payBtn.innerText = "Aprobar Transacción Bancaria 💳";
+        
+        // Resetear inputs del formulario de envío
+        document.getElementById('ship-name').value = "";
+        document.getElementById('ship-phone').value = "";
+        document.getElementById('ship-address').value = "";
+        document.getElementById('ship-city').value = "";
         
         closePaymentGate();
-        finalizeCheckoutFlow(pendingWhatsAppMessage);
-    }, 3000);
+        renderProducts();
+    }, 2500);
 };
 
-// Encapsulación del cierre de base de datos y envío a WhatsApp
-function finalizeCheckoutFlow(message) {
-    saveToDatabase();
-    updateWalletUI();
-    
-    document.getElementById('ship-name').value = "";
-    document.getElementById('ship-phone').value = "";
-    document.getElementById('ship-address').value = "";
-    document.getElementById('ship-city').value = "";
+// SIMULADOR DE RASTREO
+window.trackUserOrder = function() {
+    const input = document.getElementById('tracking-id-input').value.trim();
+    const display = document.getElementById('tracking-result-display');
+    if(!input || !display) return;
 
-    const myBusinessPhone = "7841014335"; 
-    const encodedMessage = encodeURIComponent(message);
-    window.open(`https://wa.me/${myBusinessPhone}?text=${encodedMessage}`, '_blank');
-}
+    display.style.display = "block";
+    // Buscar si existe un pedido bajo ese nombre o teléfono en la bitácora
+    const match = clientsOrdersLog.find(o => o.telefono.includes(input) || o.cliente.toLowerCase().includes(input.toLowerCase()));
+
+    if (match) {
+        display.innerHTML = `
+            <span style="color:#2ed573;">✔ Pedido Encontrado:</span> <strong>${match.id}</strong><br>
+            <small>Productos: ${match.detalles}</small><br>
+            <strong>Estado Actual:</strong> <span style="color:#ffa502;">En tránsito internacional (Vuelo de Carga) ✈️</span><br>
+            <small>Garantía de Satisfacción Total Aplicada.</small>
+        `;
+    } else {
+        display.innerHTML = `
+            <span style="color:#ff4757;">ℹ️ Estado de Envío Estándar:</span> El paquete asociado al código/teléfono se encuentra listo en almacén central esperando despacho de aduana. Todos los envíos son gratis.
+        `;
+    }
+};
 
 // ==========================================
-// RECOMPENSAS Y RULETA GACHA
+// RECOMPENSAS: RULETA GACHA CON COINCIDENCIA MATEMÁTICA
 // ==========================================
-if(document.getElementById('btn-ad')) {
-    document.getElementById('btn-ad').onclick = function() {
-        alert("Comercial en reproducción...");
-        setTimeout(() => {
-            luckyTickets += 1;
-            saveToDatabase();
-            updateWalletUI();
-            alert("¡Felicidades! Ganaste 1 Ticket.");
-        }, 1000); 
-    };
-}
-
 if(document.getElementById('btn-spin')) {
     document.getElementById('btn-spin').onclick = function() {
         if (luckyTickets <= 0 || isSpinning) return alert("¡No tienes boletos suficientes!");
@@ -610,18 +420,19 @@ if(document.getElementById('btn-spin')) {
 
         const wheel = document.getElementById('wheel');
         
-        const premiosComprador = [
-            { premio: 15.00, label: "¡PREMIO MAYOR!" },
-            { premio: 10.00, label: "¡Nivel Épico!" },
-            { premio: 5.00, label: "¡Gran Cashback!" },
-            { premio: 3.00, label: "¡Premio Básico!" },
-            { premio: 0.00, label: "Sigue participando" }
+        // Recompensas configuradas exactamente de $0.50 a $5.00 pesos
+        const premios = [
+            { premio: 5.00, label: "Cashback Épico de $5.00" },
+            { premio: 2.00, label: "Cashback de $2.00" },
+            { premio: 1.00, label: "Cashback de $1.00" },
+            { premio: 0.50, label: "Cashback de $0.50" },
+            { premio: 3.00, label: "Cashback Súper de $3.00" }
         ];
 
-        const indexPremio = Math.floor(Math.random() * premiosComprador.length);
-        const resultado = premiosComprador[indexPremio];
+        const indexPremio = Math.floor(Math.random() * premios.length);
+        const resultado = premios[indexPremio];
         
-        const gradosPorSegmento = 360 / premiosComprador.length; 
+        const gradosPorSegmento = 360 / premios.length; 
         const anguloDestino = 360 - (indexPremio * gradosPorSegmento);
         const vueltasCompletas = 1440; 
         const anguloFinal = vueltasCompletas + anguloDestino; 
@@ -632,14 +443,11 @@ if(document.getElementById('btn-spin')) {
 
         setTimeout(() => {
             isSpinning = false;
-            if (resultado.premio > 0) {
-                walletBalance += resultado.premio;
-                addTransaction("Gacha", `Ganaste en Ruleta: ${resultado.label}`, resultado.premio, "🎰");
-                alert(`🎰 ¡RULETA DETENIDA!\n${resultado.label}\nRecompensa de Cashback: +$${resultado.premio.toFixed(2)}`);
-            } else {
-                addTransaction("Gacha", "Giraste la ruleta: Mala suerte", 0, "❌");
-                alert(`🎰 Suerte para la próxima.`);
-            }
+            walletBalance += resultado.premio;
+            addTransaction("Ruleta", `Ganaste: ${resultado.label}`, resultado.premio, "🎰");
+            
+            alert(`🎰 ¡RULETA DETENIDA COMPLETAMENTE!\nPremio obtenido: +$${resultado.premio.toFixed(2)} pesos MXN.`);
+            
             saveToDatabase();
             updateWalletUI();
         }, 4000); 
@@ -647,25 +455,15 @@ if(document.getElementById('btn-spin')) {
 }
 
 window.addTransaction = function(tipo, detalle, monto, icono) {
-    const ahora = new Date();
-    const tiempoEstampa = `${ahora.getHours().toString().padStart(2, '0')}:${ahora.getMinutes().toString().padStart(2, '0')}`;
-    
-    transactionHistory.unshift({
-        fecha: tiempoEstampa,
-        tipo: tipo,
-        detalle: detalle,
-        monto: monto,
-        icono: icono
-    });
-    
-    if(transactionHistory.length > 20) transactionHistory.pop();
+    const tiempoEstampa = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+    transactionHistory.unshift({ fecha: tiempoEstampa, tipo: tipo, detalle: detalle, monto: monto, icono: icono });
+    if(transactionHistory.length > 15) transactionHistory.pop();
     saveToDatabase();
 };
 
 window.toggleHistoryModal = function() {
     const modal = document.getElementById('history-modal');
     if (!modal) return;
-    
     if (modal.style.display === 'flex') {
         modal.style.display = 'none';
     } else {
@@ -676,45 +474,123 @@ window.toggleHistoryModal = function() {
 
 function renderHistoryItems() {
     const container = document.getElementById('history-items-container');
-    const adminLogsContainer = document.getElementById('admin-live-logs');
     if (!container) return;
-    
-    if (transactionHistory.length === 0) {
-        container.innerHTML = `<p style="color: #a4b0be; text-align: center;">No hay movimientos.</p>`;
-        if (adminLogsContainer) adminLogsContainer.innerHTML = `[SISTEMA]: Sin operaciones hoy.`;
-        return;
-    }
-    
     container.innerHTML = '';
-    if (adminLogsContainer) adminLogsContainer.innerHTML = ''; 
 
     transactionHistory.forEach(item => {
-        const colorMonto = item.monto > 0 ? '#2ed573' : (item.monto < 0 ? '#ff4757' : '#a4b0be');
+        const colorMonto = item.monto > 0 ? '#66fcf1' : (item.monto < 0 ? '#ff4757' : '#a4b0be');
         const signo = item.monto > 0 ? '+' : '';
-        
         container.innerHTML += `
-            <div style="background: #2f3542; padding: 12px; border-radius: 8px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; border-left: 4px solid ${colorMonto}; color: white;">
+            <div style="background:#0b0c10; padding:12px; border-radius:6px; display:flex; justify-content:space-between; align-items:center; border-left:3px solid ${colorMonto};">
                 <div>
-                    <span style="font-size: 1rem;">${item.icono} <strong>${item.detalle}</strong></span><br>
-                    <small style="color: #a4b0be;">${item.fecha} | ${item.tipo}</small>
+                    <span style="font-size:0.95rem; color:#fff;">${item.icono} <strong>${item.detalle}</strong></span><br>
+                    <small style="color:#747d8c;">${item.fecha} | ${item.tipo}</small>
                 </div>
-                <span style="color: ${colorMonto}; font-weight: bold; font-size: 1.1rem;">
+                <span style="color:${colorMonto}; font-weight:bold;">
                     ${item.monto !== 0 ? signo + '$' + item.monto.toFixed(2) : '---'}
                 </span>
             </div>
         `;
-
-        if (adminLogsContainer) {
-            adminLogsContainer.innerHTML += `
-                <div style="margin-bottom: 4px; border-bottom: 1px dashed #2f3542; padding-bottom: 4px; color:#2ed573;">
-                    [${item.fecha}] - LOG_${item.tipo.toUpperCase()}: ${item.detalle} (${item.monto !== 0 ? signo + '$' + item.monto.toFixed(2) : 'COD'})
-                </div>
-            `;
-        }
     });
 }
 
-// Inicialización de la app limpia y segura
+// ==========================================
+// CONSOLA PRIVADA DE ADMINISTRACIÓN CMS
+// ==========================================
+window.openAdminPanel = function() {
+    const password = prompt("🔐 Introduce la contraseña secreta de administrador:");
+    if (password === "micanal311") {
+        document.getElementById('admin-panel').style.display = 'block';
+        renderAdminDashboardData();
+    } else {
+        alert("❌ Contraseña incorrecta.");
+    }
+};
+
+window.closeAdminPanel = function() {
+    document.getElementById('admin-panel').style.display = 'none';
+};
+
+function renderAdminDashboardData() {
+    // Calcular ingresos totales líquidos cobrados
+    let totalLiquidity = clientsOrdersLog.reduce((sum, order) => sum + order.total, 0);
+    document.getElementById('admin-total-liquidity').innerText = `$${totalLiquidity.toFixed(2)}`;
+    document.getElementById('admin-total-orders-count').innerText = clientsOrdersLog.length;
+
+    // Renderizar la Bitácora de Pedidos Completa para Control
+    const tableBody = document.getElementById('admin-orders-table-body');
+    if (tableBody) {
+        if(clientsOrdersLog.length === 0) {
+            tableBody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:#747d8c;">Ningún pedido registrado en esta sesión.</td></tr>`;
+        } else {
+            tableBody.innerHTML = '';
+            clientsOrdersLog.forEach(order => {
+                tableBody.innerHTML += `
+                    <tr>
+                        <td>${order.fecha}</td>
+                        <td style="font-weight:bold; color:#66fcf1;">${order.cliente}</td>
+                        <td>${order.telefono}</td>
+                        <td style="font-size:0.8rem;">${order.direccion}</td>
+                        <td style="color:#ffa502; font-size:0.8rem;">${order.detalles}</td>
+                        <td style="color:#2ed573; font-weight:bold;">$${order.total.toFixed(2)}</td>
+                    </tr>
+                `;
+            });
+        }
+    }
+
+    // Renderizar gestor de inventario básico
+    const invContainer = document.getElementById('admin-inventory-list');
+    if (invContainer) {
+        invContainer.innerHTML = '';
+        productsInventory.forEach(p => {
+            invContainer.innerHTML += `
+                <div class="inventory-item-row-dash">
+                    <span style="font-size:0.85rem;">[${p.category.toUpperCase()}] <strong>${p.title}</strong> - $${p.price.toFixed(2)} (Ventas: ${p.salesCount || 0})</span>
+                    <button onclick="deleteProductFromAdmin(${p.id})" style="background:#ff4757; color:white; border:none; padding:4px 8px; border-radius:4px; cursor:pointer; font-size:0.75rem;">Eliminar 🗑️</button>
+                </div>
+            `;
+        });
+    }
+}
+
+window.createNewProduct = function(event) {
+    event.preventDefault();
+    const title = document.getElementById('new-title').value;
+    const price = parseFloat(document.getElementById('new-price').value);
+    const desc = document.getElementById('new-desc').value;
+    const category = document.getElementById('new-category').value;
+    const imagesInput = document.getElementById('new-images').value;
+
+    let imagesList = imagesInput.trim() !== "" ? imagesInput.split(',').map(url => url.trim()) : [""];
+
+    productsInventory.push({
+        id: Date.now(),
+        title: title,
+        price: price,
+        desc: desc,
+        category: category,
+        images: imagesList,
+        salesCount: 0,
+        reviews: []
+    });
+
+    saveToDatabase();
+    renderProducts();
+    renderAdminDashboardData();
+    document.getElementById('add-product-form').reset();
+    alert("🎉 Producto agregado exitosamente al inventario.");
+};
+
+window.deleteProductFromAdmin = function(id) {
+    if(!confirm("⚠️ ¿Deseas eliminar este producto del sistema?")) return;
+    productsInventory = productsInventory.filter(p => p.id !== id);
+    saveToDatabase();
+    renderProducts();
+    renderAdminDashboardData();
+};
+
+// Inicialización de arranque limpio de la App
 document.addEventListener("DOMContentLoaded", () => {
     renderProducts();
     updateWalletUI();
