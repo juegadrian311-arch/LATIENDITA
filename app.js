@@ -15,45 +15,82 @@ const firebaseConfig = {
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
-// ==========================================
-// BASE DE DATOS LOCAL E INVENTARIO BASE UNIFICADO
-// ==========================================
 
-const defaultProductsCatalog = [
-    { id: 101, title: "Mini Aspiradora de Mano Pro USB", price: 349.00, desc: "Fuerte poder de succión ideal para el hogar y electrodomésticos compactos.", category: "electrodomesticos", images: ["https://images.unsplash.com/photo-1563161431-e4199c5c9911?w=500"], salesCount: 45, reviews: [{user:"Luis M.", stars:5, comment:"Excelente succión para el teclado y coche."}] },
-    { id: 102, title: "Labial Velvet Matte Larga Duración", price: 189.00, desc: "Fórmula hidratante premium, acabado mate aterciopelado perfecto.", category: "belleza", images: ["https://images.unsplash.com/photo-1586495777744-4413f21062fa?w=500"], salesCount: 88, reviews: [{user:"Ana P.", stars:5, comment:"El color es idéntico y dura todo el día."}] },
-    { id: 103, title: "Organizador Multifuncional de Hogar", price: 299.00, desc: "Ahorra espacio con estilo. Plástico resistente de alta calidad.", category: "hogar", images: ["https://images.unsplash.com/photo-1596462502278-27bfdc403348?w=500"], salesCount: 12, reviews: [] },
-    { id: 104, title: "Serum Hidratante Ácido Hialurónico", price: 245.00, desc: "Cuidado profundo para tu piel. Absorción rápida sin sensación grasa.", category: "cuidado", images: ["https://images.unsplash.com/photo-1608248597481-496100c80836?w=500"], salesCount: 61, reviews: [{user:"Gaby R.", stars:4, comment:"Deja la piel muy suave."}] }
-];
-
-let productsInventory = JSON.parse(localStorage.getItem('productsInventory_v2')) || defaultProductsCatalog;
-let walletBalance = parseFloat(localStorage.getItem('walletBalance_v2')) || 0.00;
-let luckyTickets = parseInt(localStorage.getItem('luckyTickets_v2')) || 0;
-let cart = JSON.parse(localStorage.getItem('cart_v2')) || [];
+// ==========================================
+// ESTADO GLOBAL COMPARTIDO
+// ==========================================
+let productsInventory = [];
+let clientsOrdersLog = [];
+let cart = JSON.parse(localStorage.getItem('cart_v3')) || [];
+let walletBalance = parseFloat(localStorage.getItem('walletBalance_v3')) || 0.00;
+let luckyTickets = parseInt(localStorage.getItem('luckyTickets_v3')) || 0;
 let isSpinning = false;
 
-// BITÁCORA MAESTRA DE CLIENTES EN LOCALSTORAGE
-let clientsOrdersLog = JSON.parse(localStorage.getItem('clientsOrdersLog_v2')) || [];
-
-let transactionHistory = JSON.parse(localStorage.getItem('transactionHistory_v2')) || [
-    { fecha: "Reciente", tipo: "Sistema", detalle: "Cartera Épica Activada", monto: 0, icono: "✨" }
+let transactionHistory = JSON.parse(localStorage.getItem('transactionHistory_v3')) || [
+    { fecha: "Reciente", tipo: "Sistema", detalle: "Cartera Épica Sincronizada", monto: 0, icono: "✨" }
 ];
 
 let currentImagesList = [];
 let currentImageIndex = 0;
 let activeProductContextId = null;
+let temporaryOrderData = null;
 
-function saveToDatabase() {
-    localStorage.setItem('productsInventory_v2', JSON.stringify(productsInventory));
-    localStorage.setItem('walletBalance_v2', walletBalance);
-    localStorage.setItem('luckyTickets_v2', luckyTickets);
-    localStorage.setItem('cart_v2', JSON.stringify(cart));
-    localStorage.setItem('clientsOrdersLog_v2', JSON.stringify(clientsOrdersLog));
-    localStorage.setItem('transactionHistory_v2', JSON.stringify(transactionHistory));
+// Guardado de billetera local del usuario actual
+function saveLocalWallet() {
+    localStorage.setItem('walletBalance_v3', walletBalance);
+    localStorage.setItem('luckyTickets_v3', luckyTickets);
+    localStorage.setItem('cart_v3', JSON.stringify(cart));
+    localStorage.setItem('transactionHistory_v3', JSON.stringify(transactionHistory));
 }
 
 // ==========================================
-// RENDERIZADO CON FILTRADO REAL Y MÁS VENDIDOS
+// ESCUCHA EN TIEMPO REAL DESDE CLOUD FIRESTORE
+// ==========================================
+function startFirebaseRealtimeListeners() {
+    // 1. Escuchar Catálogo de Productos
+    db.collection("productos").onSnapshot((snapshot) => {
+        productsInventory = [];
+        snapshot.forEach((doc) => {
+            let data = doc.data();
+            data.firestoreId = doc.id; // Clave interna para borrar o editar
+            productsInventory.push(data);
+        });
+        
+        // Si la base en la nube está completamente vacía al inicio, meter catálogo semilla
+        if(productsInventory.length === 0) {
+            insertSeedData();
+        } else {
+            renderProducts();
+            if(document.getElementById('admin-panel')?.style.display === 'block') {
+                renderAdminDashboardData();
+            }
+        }
+    });
+
+    // 2. Escuchar Bitácora Maestra de Pedidos Recibidos
+    db.collection("pedidos").orderBy("timestamp", "desc").onSnapshot((snapshot) => {
+        clientsOrdersLog = [];
+        snapshot.forEach((doc) => {
+            clientsOrdersLog.push(doc.data());
+        });
+        if(document.getElementById('admin-panel')?.style.display === 'block') {
+            renderAdminDashboardData();
+        }
+    });
+}
+
+// Carga inicial por defecto por si el servidor empieza de cero
+function insertSeedData() {
+    const seed = [
+        { id: 101, title: "Mini Aspiradora de Mano Pro USB", price: 349.00, desc: "Fuerte poder de succión ideal para el hogar y electrodomésticos.", category: "electrodomesticos", images: ["https://images.unsplash.com/photo-1563161431-e4199c5c9911?w=500"], salesCount: 45, reviews: [] },
+        { id: 102, title: "Labial Velvet Matte Larga Duración", price: 189.00, desc: "Fórmula hidratante premium, acabado aterciopelado perfecto.", category: "belleza", images: ["https://images.unsplash.com/photo-1586495777744-4413f21062fa?w=500"], salesCount: 85, reviews: [] },
+        { id: 103, title: "Organizador de Espacios Elegante", price: 299.00, desc: "Diseño moderno ideal para tu hogar y cuidado del orden.", category: "hogar", images: ["https://images.unsplash.com/photo-1596462502278-27bfdc403348?w=500"], salesCount: 10, reviews: [] }
+    ];
+    seed.forEach(p => db.collection("productos").add(p));
+}
+
+// ==========================================
+// RENDERIZADO CON FILTRADO REAL
 // ==========================================
 function renderProducts() {
     const mainGrid = document.getElementById('main-products-grid');
@@ -67,21 +104,18 @@ function renderProducts() {
     const filterCat = document.getElementById('filter-category') ? document.getElementById('filter-category').value : "all";
     const priceOrder = document.getElementById('filter-price-order') ? document.getElementById('filter-price-order').value : "default";
 
-    // 1. Filtrar productos por búsqueda y categoría real
     let filtered = productsInventory.filter(p => {
         const matchesSearch = p.title.toLowerCase().includes(searchQuery) || p.desc.toLowerCase().includes(searchQuery);
         const matchesCategory = (filterCat === "all" || p.category === filterCat);
         return matchesSearch && matchesCategory;
     });
 
-    // 2. Ordenar por precio si es requerido
     if (priceOrder === "low-high") {
         filtered.sort((a, b) => a.price - b.price);
     } else if (priceOrder === "high-low") {
         filtered.sort((a, b) => b.price - a.price);
     }
 
-    // 3. Renderizar productos en la cuadrícula principal
     filtered.forEach(prod => {
         const imgSrc = prod.images && prod.images[0] ? prod.images[0] : "";
         const imgContent = imgSrc.startsWith('http') 
@@ -102,7 +136,7 @@ function renderProducts() {
         `;
     });
 
-    // 4. Renderizar Sección de Más Vendidos (Productos con salesCount >= 40)
+    // Filtro para Los Más Vendidos (salesCount >= 40)
     if (bestsellersGrid) {
         let bestsellers = productsInventory.filter(p => p.salesCount && p.salesCount >= 40);
         if (bestsellers.length === 0) {
@@ -141,7 +175,7 @@ function updateWalletUI() {
 }
 
 // ==========================================
-// VISTA DETALLE, RESEÑAS Y CARRUSEL
+// DETALLE DE PRODUCTO, RESEÑAS CON BOLETO DE REGALO
 // ==========================================
 window.openProductDetail = function(id) {
     const prod = productsInventory.find(p => p.id === id);
@@ -153,10 +187,9 @@ window.openProductDetail = function(id) {
     document.getElementById('detail-price').innerText = `$${prod.price.toFixed(2)}`;
     document.getElementById('detail-desc').innerText = prod.desc;
 
-    const addBtn = document.getElementById('detail-add-btn');
-    addBtn.onclick = function(e) { addToCart(prod.id, e); };
+    document.getElementById('detail-add-btn').onclick = function(e) { addToCart(prod.id, e); };
 
-    currentImagesList = prod.images && prod.images.length > 0 ? prod.images : ["#1f2833"];
+    currentImagesList = prod.images && prod.images.length > 0 ? prod.images : [""];
     currentImageIndex = 0;
     updateCarouselUI();
     renderReviewsList(prod.reviews || []);
@@ -192,7 +225,7 @@ window.changeCarouselImage = function(direction) {
     updateCarouselUI();
 };
 
-// MANDAR RESEÑA A CAMBIO DE 1 TICKET
+// Enviar reseña a Firebase y regalar 1 Boleto
 window.submitProductReview = function(event) {
     event.preventDefault();
     if (!activeProductContextId) return;
@@ -201,20 +234,23 @@ window.submitProductReview = function(event) {
     const stars = parseInt(document.getElementById('rev-stars').value);
     const comment = document.getElementById('rev-comment').value.trim();
 
-    const prodIndex = productsInventory.findIndex(p => p.id === activeProductContextId);
-    if (prodIndex !== -1) {
-        if (!productsInventory[prodIndex].reviews) productsInventory[prodIndex].reviews = [];
-        
-        productsInventory[prodIndex].reviews.unshift({ user: name, stars: stars, comment: comment });
-        luckyTickets += 1; // Incentivo: 1 Ticket gratis
-        
-        addTransaction("Recompensa", `Reseña de producto: +1 Ticket`, 0, "🎫");
-        saveToDatabase();
-        updateWalletUI();
-        renderReviewsList(productsInventory[prodIndex].reviews);
-        
-        document.getElementById('add-review-form').reset();
-        alert("🎉 ¡Gracias por tu opinión! Se ha añadido 1 Ticket de la Suerte a tu cuenta.");
+    const targetProd = productsInventory.find(p => p.id === activeProductContextId);
+    if (targetProd && targetProd.firestoreId) {
+        let updatedReviews = targetProd.reviews || [];
+        updatedReviews.unshift({ user: name, stars: stars, comment: comment });
+
+        // Actualizar el documento exacto en Firestore
+        db.collection("productos").doc(targetProd.firestoreId).update({
+            reviews: updatedReviews
+        }).then(() => {
+            luckyTickets += 1; // Incentivo otorgado
+            addTransaction("Recompensa", `Reseña: +1 Ticket de Ruleta`, 0, "🎫");
+            saveLocalWallet();
+            updateWalletUI();
+            
+            document.getElementById('add-review-form').reset();
+            alert("🎉 ¡Reseña guardada en la nube de forma profesional! Ganaste 1 boleto extra.");
+        });
     }
 };
 
@@ -224,17 +260,16 @@ function renderReviewsList(reviews) {
     container.innerHTML = '';
 
     if(reviews.length === 0) {
-        container.innerHTML = `<p style="color:#747d8c; font-size:0.85rem;">Aún no hay reseñas de este producto. ¡Sé el primero!</p>`;
+        container.innerHTML = `<p style="color:#747d8c; font-size:0.85rem;">No hay opiniones aún. ¡Escribe una opinión y gana 1 boleto!</p>`;
         return;
     }
 
     reviews.forEach(r => {
-        let starsStr = "⭐".repeat(r.stars);
         container.innerHTML += `
             <div class="review-item-card">
                 <div style="display:flex; justify-content:space-between; margin-bottom:4px; font-size:0.85rem;">
                     <strong>👤 ${r.user}</strong>
-                    <span style="color:#ffa502;">${starsStr}</span>
+                    <span style="color:#ffa502;">${"⭐".repeat(r.stars)}</span>
                 </div>
                 <p style="font-size:0.85rem; color:#a4b0be;">${r.comment}</p>
             </div>
@@ -243,17 +278,13 @@ function renderReviewsList(reviews) {
 }
 
 // ==========================================
-// CONTROL DEL CARRITO Y LOGÍSTICA DE COMPRA
+// CARRITO, CHECKOUT LOGÍSTICO Y BITÁCORA EN NUBE
 // ==========================================
 window.toggleCartModal = function() {
     const modal = document.getElementById('cart-modal');
     if (!modal) return;
-    if (modal.style.display === 'flex') {
-        modal.style.display = 'none';
-    } else {
-        modal.style.display = 'flex';
-        renderCartItems();
-    }
+    modal.style.display = (modal.style.display === 'flex') ? 'none' : 'flex';
+    if(modal.style.display === 'flex') renderCartItems();
 };
 
 function renderCartItems() {
@@ -276,7 +307,7 @@ function renderCartItems() {
             <div style="display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:1px solid #1f2833;">
                 <div>
                     <span style="font-weight:600; color:#fff;">${prod.title}</span><br>
-                    <small style="color:#45a29e; text-transform:uppercase; font-size:0.75rem;">${prod.category}</small>
+                    <small style="color:#45a29e; font-size:0.75rem;">${prod.category.toUpperCase()}</small>
                 </div>
                 <div style="display:flex; gap:15px; align-items:center;">
                     <span style="color:#66fcf1; font-weight:bold;">$${prod.price.toFixed(2)}</span>
@@ -295,20 +326,17 @@ window.addToCart = function(id, event) {
     if(!prod) return;
 
     cart.push(prod);
-    saveToDatabase();
+    saveLocalWallet();
     updateWalletUI();
-    alert(`🛒 Se añadió "${prod.title}" al carrito.`);
+    alert(`🛒 "${prod.title}" agregado al carrito.`);
 };
 
 window.removeFromCart = function(index) {
     cart.splice(index, 1);
-    saveToDatabase();
+    saveLocalWallet();
     updateWalletUI();
     renderCartItems();
 };
-
-// PASARELA DE PAGO INTERNA
-let temporaryOrderData = null;
 
 window.checkoutCart = function() {
     if(cart.length === 0) return;
@@ -319,13 +347,11 @@ window.checkoutCart = function() {
     const city = document.getElementById('ship-city').value.trim();
 
     if(!name || !phone || !address || !city) {
-        alert("⚠️ Completa los datos de envío para poder procesar la compra.");
+        alert("⚠️ Por favor ingresa todos los datos del despacho para procesar la orden.");
         return;
     }
 
     let total = cart.reduce((sum, item) => sum + item.price, 0);
-    
-    // Retener la información del pedido antes de aprobar el pago con tarjeta
     temporaryOrderData = { name, phone, address, city, total, items: [...cart] };
 
     document.getElementById('gate-total-price').innerText = `$${total.toFixed(2)}`;
@@ -343,101 +369,96 @@ window.processGatePayment = function() {
     const cvc = document.getElementById('card-cvc').value.trim();
 
     if (card.length < 16 || expiry.length < 5 || cvc.length < 3) {
-        alert("❌ Error: Datos de tarjeta bancaria incompletos.");
+        alert("❌ Error en la verificación de la tarjeta.");
         return;
     }
 
     const payBtn = document.getElementById('btn-gate-pay');
     payBtn.disabled = true;
-    payBtn.innerText = "🔒 Encriptando conexión segura...";
+    payBtn.innerText = "🔒 Encriptando conexión y alertando pasarela...";
 
     setTimeout(() => {
-        const timestamp = new Date().toLocaleString();
+        const orderId = "ORD-" + Date.now().toString().slice(-6);
         
-        // Registrar en la Bitácora Maestra de Clientes de la Administración
-        clientsOrdersLog.push({
-            id: "ORD-" + Date.now().toString().slice(-6),
-            fecha: timestamp,
+        // Guardar el pedido en Firebase de forma remota y global
+        db.collection("pedidos").add({
+            id: orderId,
+            fecha: new Date().toLocaleString(),
+            timestamp: firebase.firestore.FieldValue.serverTimestamp(),
             cliente: temporaryOrderData.name,
             telefono: temporaryOrderData.phone,
             direccion: `${temporaryOrderData.address}, ${temporaryOrderData.city}`,
             detalles: temporaryOrderData.items.map(i => i.title).join(' | '),
             total: temporaryOrderData.total
+        }).then(() => {
+            // Incrementar de forma remota el contador de ventas de cada producto en Firestore
+            temporaryOrderData.items.forEach(item => {
+                const target = productsInventory.find(p => p.id === item.id);
+                if(target && target.firestoreId) {
+                    db.collection("productos").doc(target.firestoreId).update({
+                        salesCount: (target.salesCount || 0) + 1
+                    });
+                }
+            });
+
+            // Entregar recompensa de 2 tickets automáticos por compra realizada
+            luckyTickets += 2;
+            addTransaction("Compra", `Pedido ${orderId} aprobado`, -temporaryOrderData.total, "💳");
+            
+            cart = [];
+            saveLocalWallet();
+            updateWalletUI();
+
+            alert(`💳 ¡PAGO APROBADO CON ÉXITO!\nLa orden ha sido enviada al correo logístico y registrada en el panel central.`);
+            
+            payBtn.disabled = false;
+            payBtn.innerText = "Aprobar Transacción Bancaria 💳";
+            
+            document.getElementById('add-review-form').reset();
+            closePaymentGate();
+        }).catch((err) => {
+            alert("Error al procesar la orden: " + err);
+            payBtn.disabled = false;
         });
 
-        // Sumar contadores de "Más Vendidos" a los artículos comprados
-        temporaryOrderData.items.forEach(item => {
-            const index = productsInventory.findIndex(p => p.id === item.id);
-            if (index !== -1) {
-                productsInventory[index].salesCount = (productsInventory[index].salesCount || 0) + 1;
-            }
-        });
-
-        // Dar incentivo de 2 tickets automáticos por compra
-        luckyTickets += 2;
-        
-        addTransaction("Compra", `Pago aprobado vía pasarela segura`, -temporaryOrderData.total, "💳");
-        
-        // Limpiar el carrito
-        cart = [];
-        saveToDatabase();
-        updateWalletUI();
-
-        alert("💳 ¡PAGO APROBADO CON ÉXITO VIA PASARELA!\nLa información ha sido enviada al servidor, correo electrónico y panel de control logístico.");
-        
-        payBtn.disabled = false;
-        payBtn.innerText = "Aprobar Transacción Bancaria 💳";
-        
-        // Resetear inputs del formulario de envío
-        document.getElementById('ship-name').value = "";
-        document.getElementById('ship-phone').value = "";
-        document.getElementById('ship-address').value = "";
-        document.getElementById('ship-city').value = "";
-        
-        closePaymentGate();
-        renderProducts();
-    }, 2500);
+    }, 2000);
 };
 
-// SIMULADOR DE RASTREO
+// ==========================================
+// RASTREO LOGÍSTICO Y RULETA MATEMÁTICA
+// ==========================================
 window.trackUserOrder = function() {
     const input = document.getElementById('tracking-id-input').value.trim();
     const display = document.getElementById('tracking-result-display');
     if(!input || !display) return;
 
     display.style.display = "block";
-    // Buscar si existe un pedido bajo ese nombre o teléfono en la bitácora
-    const match = clientsOrdersLog.find(o => o.telefono.includes(input) || o.cliente.toLowerCase().includes(input.toLowerCase()));
+    const match = clientsOrdersLog.find(o => o.telefono.includes(input) || o.cliente.toLowerCase().includes(input.toLowerCase()) || o.id === input);
 
     if (match) {
         display.innerHTML = `
-            <span style="color:#2ed573;">✔ Pedido Encontrado:</span> <strong>${match.id}</strong><br>
-            <small>Productos: ${match.detalles}</small><br>
-            <strong>Estado Actual:</strong> <span style="color:#ffa502;">En tránsito internacional (Vuelo de Carga) ✈️</span><br>
-            <small>Garantía de Satisfacción Total Aplicada.</small>
+            <span style="color:#66fcf1;">✔ Registro Encontrado:</span> <strong>${match.id}</strong><br>
+            <small>Artículos: ${match.detalles}</small><br>
+            <strong>Estado:</strong> <span style="color:#ffa502;">En tránsito aéreo logístico ✈️</span><br>
+            <small>Garantía de Satisfacción Asegurada.</small>
         `;
     } else {
         display.innerHTML = `
-            <span style="color:#ff4757;">ℹ️ Estado de Envío Estándar:</span> El paquete asociado al código/teléfono se encuentra listo en almacén central esperando despacho de aduana. Todos los envíos son gratis.
+            <span style="color:#a4b0be;">📦 Estatus Estándar:</span> Paquete preparado en almacén para despacho internacional. Todos los envíos cuentan con garantía total y logística gratuita.
         `;
     }
 };
 
-// ==========================================
-// RECOMPENSAS: RULETA GACHA CON COINCIDENCIA MATEMÁTICA
-// ==========================================
 if(document.getElementById('btn-spin')) {
     document.getElementById('btn-spin').onclick = function() {
         if (luckyTickets <= 0 || isSpinning) return alert("¡No tienes boletos suficientes!");
 
         isSpinning = true;
         luckyTickets--;
-        saveToDatabase();
+        saveLocalWallet();
         updateWalletUI();
 
         const wheel = document.getElementById('wheel');
-        
-        // Recompensas configuradas exactamente de $0.50 a $5.00 pesos
         const premios = [
             { premio: 5.00, label: "Cashback Épico de $5.00" },
             { premio: 2.00, label: "Cashback de $2.00" },
@@ -451,42 +472,35 @@ if(document.getElementById('btn-spin')) {
         
         const gradosPorSegmento = 360 / premios.length; 
         const anguloDestino = 360 - (indexPremio * gradosPorSegmento);
-        const vueltasCompletas = 1440; 
-        const anguloFinal = vueltasCompletas + anguloDestino; 
+        const anguloFinal = 1440 + anguloDestino; 
 
-        if(wheel) {
-            wheel.style.transform = `rotate(${anguloFinal}deg)`;
-        }
+        if(wheel) wheel.style.transform = `rotate(${anguloFinal}deg)`;
 
         setTimeout(() => {
             isSpinning = false;
             walletBalance += resultado.premio;
-            addTransaction("Ruleta", `Ganaste: ${resultado.label}`, resultado.premio, "🎰");
+            addTransaction("Ruleta", `Resultado: ${resultado.label}`, resultado.premio, "🎰");
             
-            alert(`🎰 ¡RULETA DETENIDA COMPLETAMENTE!\nPremio obtenido: +$${resultado.premio.toFixed(2)} pesos MXN.`);
+            alert(`🎰 ¡Premio Obtenido: +$${resultado.premio.toFixed(2)} pesos MXN!`);
             
-            saveToDatabase();
+            saveLocalWallet();
             updateWalletUI();
         }, 4000); 
     };
 }
 
 window.addTransaction = function(tipo, detalle, monto, icono) {
-    const tiempoEstampa = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-    transactionHistory.unshift({ fecha: tiempoEstampa, tipo: tipo, detalle: detalle, monto: monto, icono: icono });
+    const timeStr = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+    transactionHistory.unshift({ fecha: timeStr, tipo: tipo, detalle: detalle, monto: monto, icono: icono });
     if(transactionHistory.length > 15) transactionHistory.pop();
-    saveToDatabase();
+    saveLocalWallet();
 };
 
 window.toggleHistoryModal = function() {
     const modal = document.getElementById('history-modal');
     if (!modal) return;
-    if (modal.style.display === 'flex') {
-        modal.style.display = 'none';
-    } else {
-        modal.style.display = 'flex';
-        renderHistoryItems();
-    }
+    modal.style.display = (modal.style.display === 'flex') ? 'none' : 'flex';
+    if(modal.style.display === 'flex') renderHistoryItems();
 };
 
 function renderHistoryItems() {
@@ -495,24 +509,21 @@ function renderHistoryItems() {
     container.innerHTML = '';
 
     transactionHistory.forEach(item => {
-        const colorMonto = item.monto > 0 ? '#66fcf1' : (item.monto < 0 ? '#ff4757' : '#a4b0be');
-        const signo = item.monto > 0 ? '+' : '';
+        const color = item.monto > 0 ? '#66fcf1' : (item.monto < 0 ? '#ff4757' : '#a4b0be');
         container.innerHTML += `
-            <div style="background:#0b0c10; padding:12px; border-radius:6px; display:flex; justify-content:space-between; align-items:center; border-left:3px solid ${colorMonto};">
+            <div style="background:#0b0c10; padding:12px; border-radius:6px; display:flex; justify-content:space-between; align-items:center; border-left:3px solid ${color};">
                 <div>
-                    <span style="font-size:0.95rem; color:#fff;">${item.icono} <strong>${item.detalle}</strong></span><br>
+                    <span style="color:#fff;">${item.icono} <strong>${item.detalle}</strong></span><br>
                     <small style="color:#747d8c;">${item.fecha} | ${item.tipo}</small>
                 </div>
-                <span style="color:${colorMonto}; font-weight:bold;">
-                    ${item.monto !== 0 ? signo + '$' + item.monto.toFixed(2) : '---'}
-                </span>
+                <span style="color:${color}; font-weight:bold;">${item.monto !== 0 ? (item.monto > 0 ? '+' : '') + '$' + item.monto.toFixed(2) : '---'}</span>
             </div>
         `;
     });
 }
 
 // ==========================================
-// CONSOLA PRIVADA DE ADMINISTRACIÓN CMS
+// CONSOLA PRIVADA DE ADMINISTRACIÓN CMS (CONTRASEÑA: micanal311)
 // ==========================================
 window.openAdminPanel = function() {
     const password = prompt("🔐 Introduce la contraseña secreta de administrador:");
@@ -529,16 +540,14 @@ window.closeAdminPanel = function() {
 };
 
 function renderAdminDashboardData() {
-    // Calcular ingresos totales líquidos cobrados
-    let totalLiquidity = clientsOrdersLog.reduce((sum, order) => sum + order.total, 0);
+    let totalLiquidity = clientsOrdersLog.reduce((sum, order) => sum + (order.total || 0), 0);
     document.getElementById('admin-total-liquidity').innerText = `$${totalLiquidity.toFixed(2)}`;
     document.getElementById('admin-total-orders-count').innerText = clientsOrdersLog.length;
 
-    // Renderizar la Bitácora de Pedidos Completa para Control
     const tableBody = document.getElementById('admin-orders-table-body');
     if (tableBody) {
         if(clientsOrdersLog.length === 0) {
-            tableBody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:#747d8c;">Ningún pedido registrado en esta sesión.</td></tr>`;
+            tableBody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:#747d8c;">Ningún pedido registrado en la nube.</td></tr>`;
         } else {
             tableBody.innerHTML = '';
             clientsOrdersLog.forEach(order => {
@@ -549,14 +558,13 @@ function renderAdminDashboardData() {
                         <td>${order.telefono}</td>
                         <td style="font-size:0.8rem;">${order.direccion}</td>
                         <td style="color:#ffa502; font-size:0.8rem;">${order.detalles}</td>
-                        <td style="color:#2ed573; font-weight:bold;">$${order.total.toFixed(2)}</td>
+                        <td style="color:#2ed573; font-weight:bold;">$${(order.total || 0).toFixed(2)}</td>
                     </tr>
                 `;
             });
         }
     }
 
-    // Renderizar gestor de inventario básico
     const invContainer = document.getElementById('admin-inventory-list');
     if (invContainer) {
         invContainer.innerHTML = '';
@@ -564,7 +572,7 @@ function renderAdminDashboardData() {
             invContainer.innerHTML += `
                 <div class="inventory-item-row-dash">
                     <span style="font-size:0.85rem;">[${p.category.toUpperCase()}] <strong>${p.title}</strong> - $${p.price.toFixed(2)} (Ventas: ${p.salesCount || 0})</span>
-                    <button onclick="deleteProductFromAdmin(${p.id})" style="background:#ff4757; color:white; border:none; padding:4px 8px; border-radius:4px; cursor:pointer; font-size:0.75rem;">Eliminar 🗑️</button>
+                    <button onclick="deleteProductFromAdmin('${p.firestoreId}')" style="background:#ff4757; color:white; border:none; padding:4px 8px; border-radius:4px; cursor:pointer; font-size:0.75rem;">Eliminar 🗑️</button>
                 </div>
             `;
         });
@@ -581,7 +589,8 @@ window.createNewProduct = function(event) {
 
     let imagesList = imagesInput.trim() !== "" ? imagesInput.split(',').map(url => url.trim()) : [""];
 
-    productsInventory.push({
+    // Agregar directamente a la base de datos de Firebase
+    db.collection("productos").add({
         id: Date.now(),
         title: title,
         price: price,
@@ -590,25 +599,21 @@ window.createNewProduct = function(event) {
         images: imagesList,
         salesCount: 0,
         reviews: []
+    }).then(() => {
+        document.getElementById('add-product-form').reset();
+        alert("🎉 Producto subido de forma global a Cloud Firestore.");
     });
-
-    saveToDatabase();
-    renderProducts();
-    renderAdminDashboardData();
-    document.getElementById('add-product-form').reset();
-    alert("🎉 Producto agregado exitosamente al inventario.");
 };
 
-window.deleteProductFromAdmin = function(id) {
-    if(!confirm("⚠️ ¿Deseas eliminar este producto del sistema?")) return;
-    productsInventory = productsInventory.filter(p => p.id !== id);
-    saveToDatabase();
-    renderProducts();
-    renderAdminDashboardData();
+window.deleteProductFromAdmin = function(firestoreId) {
+    if(!firestoreId || !confirm("⚠️ ¿Deseas eliminar este artículo de la base de datos global?")) return;
+    db.collection("productos").doc(firestoreId).delete().then(() => {
+        alert("Eliminado correctamente de la nube.");
+    });
 };
 
-// Inicialización de arranque limpio de la App
+// Arranque limpio e inicialización del Listener en tiempo real
 document.addEventListener("DOMContentLoaded", () => {
-    renderProducts();
+    startFirebaseRealtimeListeners();
     updateWalletUI();
 });
